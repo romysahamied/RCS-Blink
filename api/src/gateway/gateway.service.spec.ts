@@ -21,7 +21,6 @@ import { User } from '../users/schemas/user.schema'
 import { BatchResponse } from 'firebase-admin/messaging'
 import { RcsProviderService } from './transport/rcs-provider.service'
 import { MessageChannel } from './message-channel.enum'
-import { EventEmitter2 } from '@nestjs/event-emitter'
 
 // Mock firebase-admin — non-empty apps[] so sendSMS takes FCM path (not dev pull fallback)
 jest.mock('firebase-admin', () => ({
@@ -150,10 +149,6 @@ describe('GatewayService', () => {
         {
           provide: RcsProviderService,
           useValue: mockRcsProviderService,
-        },
-        {
-          provide: EventEmitter2,
-          useValue: { emit: jest.fn() },
         },
       ],
       imports: [ConfigModule],

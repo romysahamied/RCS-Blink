@@ -1,5 +1,4 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common'
-import { EventEmitter2 } from '@nestjs/event-emitter'
 import { InjectModel } from '@nestjs/mongoose'
 import { Device, DeviceDocument } from './schemas/device.schema'
 import { Model, Types } from 'mongoose'
@@ -44,7 +43,6 @@ export class GatewayService {
     private billingService: BillingService,
     private smsQueueService: SmsQueueService,
     private rcsProviderService: RcsProviderService,
-    private eventEmitter: EventEmitter2,
   ) {}
 
   async registerDevice(
@@ -1229,12 +1227,6 @@ const updatedSms = await this.smsModel.findByIdAndUpdate(
       });
     } catch (error) {
       console.error('Failed to trigger webhook event:', error);
-    }
-
-    try {
-      this.eventEmitter.emit('sms.status.updated', updatedSms)
-    } catch (error) {
-      console.error('Failed to emit sms.status.updated:', error)
     }
     
     return {
