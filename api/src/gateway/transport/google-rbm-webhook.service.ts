@@ -1,4 +1,5 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common'
+import { EventEmitter2 } from '@nestjs/event-emitter'
 import { InjectModel } from '@nestjs/mongoose'
 import { Model, Types } from 'mongoose'
 import { ConfigService } from '@nestjs/config'
@@ -11,6 +12,7 @@ export class GoogleRbmWebhookService {
     @InjectModel(SMS.name) private smsModel: Model<SMS>,
     @InjectModel(SMSBatch.name) private smsBatchModel: Model<SMSBatch>,
     private readonly configService: ConfigService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   verifySignature(signature: string | undefined): void {
@@ -74,10 +76,18 @@ export class GoogleRbmWebhookService {
     )
 
     if (result.modifiedCount > 0) {
-      const matchedSms = await this.smsModel.find(
-        { 'metadata.providerMessageId': providerMessageId },
-        { smsBatch: 1 },
-      )
+      const matchedSms = await this.smsModel.find({
+        'metadata.providerMessageId': providerMessageId,
+      })
+
+      for (const sms of matchedSms) {
+        try {
+          this.eventEmitter.emit('sms.status.updated', sms)
+        } catch (error) {
+          console.error('Failed to emit sms.status.updated from RBM webhook:', error)
+        }
+      }
+
       const batchIds = Array.from(
         new Set(
           matchedSms
