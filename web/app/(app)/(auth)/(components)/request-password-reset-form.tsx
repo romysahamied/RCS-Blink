@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
@@ -41,6 +41,8 @@ const requestPasswordResetSchema = z.object({
 type RequestPasswordResetFormValues = z.infer<typeof requestPasswordResetSchema>
 
 export default function RequestPasswordResetForm() {
+  const [localResetLink, setLocalResetLink] = useState<string>('')
+
   const form = useForm<RequestPasswordResetFormValues>({
     resolver: zodResolver(requestPasswordResetSchema),
     defaultValues: {
@@ -89,10 +91,12 @@ export default function RequestPasswordResetForm() {
     }
 
     try {
-      await httpBrowserClient.post(
+      const response = await httpBrowserClient.post(
         ApiEndpoints.auth.requestPasswordReset(),
         data
       )
+      const resetLink = response?.data?.resetLink
+      setLocalResetLink(resetLink || '')
     } catch (error) {
       form.setError('email', { message: 'Invalid email address' })
     }
@@ -173,6 +177,19 @@ export default function RequestPasswordResetForm() {
                 If you don&apos;t receive an email, please check your spam
                 folder or contact support.
               </AlertDescription>
+              {localResetLink && (
+                <AlertDescription className='mt-4 text-sm'>
+                  Local dev reset link:{' '}
+                  <a
+                    href={localResetLink}
+                    className='underline break-all'
+                    target='_blank'
+                    rel='noreferrer'
+                  >
+                    {localResetLink}
+                  </a>
+                </AlertDescription>
+              )}
             </Alert>
           )}
         </CardContent>

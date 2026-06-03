@@ -80,6 +80,7 @@ export default function VerifyEmailPage() {
   
   const [successMessage, setSuccessMessage] = useState<string>('')
   const [errorMessage, setErrorMessage] = useState<string>('')
+  const [localVerificationLink, setLocalVerificationLink] = useState<string>('')
 
   // Check user authentication and email verification status
   const { 
@@ -123,11 +124,17 @@ export default function VerifyEmailPage() {
       ApiEndpoints.auth.sendEmailVerificationEmail(),
       {}
     ),
-    onSuccess: () => {
-      if (!verificationEmailSent) {
+    onSuccess: (response: any) => {
+      const verificationLink = response?.data?.verificationLink
+      setLocalVerificationLink(verificationLink || '')
+      if (!verificationEmailSent && !verificationLink) {
         router.push('/verify-email?verificationEmailSent=true')
       } else {
-        setSuccessMessage('Verification email has been sent to your inbox')
+        setSuccessMessage(
+          verificationLink
+            ? 'Verification link generated for local testing'
+            : 'Verification email has been sent to your inbox'
+        )
         setErrorMessage('')
       }
     },
@@ -205,6 +212,22 @@ export default function VerifyEmailPage() {
             {successMessage && (
               <InfoAlert title="Email Sent" message={successMessage} />
             )}
+            {localVerificationLink && (
+              <Alert className='bg-amber-50 text-amber-800 border-amber-200'>
+                <AlertTitle className='text-sm font-semibold'>Local Dev Link</AlertTitle>
+                <AlertDescription>
+                  SMTP is not configured. Use this verification link:{' '}
+                  <a
+                    href={localVerificationLink}
+                    className='underline break-all'
+                    target='_blank'
+                    rel='noreferrer'
+                  >
+                    {localVerificationLink}
+                  </a>
+                </AlertDescription>
+              </Alert>
+            )}
             {errorMessage && (
               <ErrorAlert message={errorMessage} />
             )}
@@ -262,6 +285,22 @@ export default function VerifyEmailPage() {
         <CardContent className='space-y-4'>
           {successMessage && (
             <InfoAlert title="Email Sent" message={successMessage} />
+          )}
+          {localVerificationLink && (
+            <Alert className='bg-amber-50 text-amber-800 border-amber-200'>
+              <AlertTitle className='text-sm font-semibold'>Local Dev Link</AlertTitle>
+              <AlertDescription>
+                SMTP is not configured. Use this verification link:{' '}
+                <a
+                  href={localVerificationLink}
+                  className='underline break-all'
+                  target='_blank'
+                  rel='noreferrer'
+                >
+                  {localVerificationLink}
+                </a>
+              </AlertDescription>
+            </Alert>
           )}
           {errorMessage && (
             <ErrorAlert message={errorMessage} />

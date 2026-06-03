@@ -198,4 +198,16 @@ export class GatewayController {
     const data = await this.gatewayService.getSmsBatchById(smsBatchId);
     return { data };
   }
+
+  @ApiOperation({ summary: 'Pull pending outbound SMS for device-side fallback transport' })
+  @UseGuards(AuthGuard, CanModifyDevice)
+  @Post('/devices/:id/pull-sms')
+  async pullPendingSMS(
+    @Param('id') deviceId: string,
+    @Request() req,
+  ) {
+    const limit = req.query.limit ? parseInt(req.query.limit, 10) : 25
+    const data = await this.gatewayService.pullPendingSMS(deviceId, limit)
+    return data
+  }
 }

@@ -8,7 +8,9 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import com.vernu.sms.activities.SMSFilterActivity;
+import android.net.Uri;
 import android.os.Build;
+import android.provider.Settings;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -25,6 +27,7 @@ import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 import com.google.android.material.snackbar.Snackbar;
+import com.google.firebase.FirebaseApp;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.zxing.integration.android.IntentIntegrator;
 import com.google.zxing.integration.android.IntentResult;
@@ -36,14 +39,21 @@ import com.vernu.sms.R;
 import com.vernu.sms.dtos.RegisterDeviceInputDTO;
 import com.vernu.sms.dtos.RegisterDeviceResponseDTO;
 import com.vernu.sms.dtos.SimInfoCollectionDTO;
+import com.vernu.sms.helpers.ComposerTapHelper;
 import com.vernu.sms.helpers.SharedPreferenceHelper;
+import com.vernu.sms.services.RCSAccessibilityService;
 import com.vernu.sms.helpers.VersionTracker;
 import com.vernu.sms.helpers.HeartbeatManager;
+import com.vernu.sms.helpers.OutboundSmsPullHelper;
+import com.vernu.sms.services.FloatingCursorService;
 import com.google.firebase.crashlytics.FirebaseCrashlytics;
 import com.google.gson.Gson;
 import okhttp3.ResponseBody;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
+import java.util.Date;
+import java.util.Locale;
 import java.util.Objects;
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -52,16 +62,25 @@ import retrofit2.Response;
 public class MainActivity extends AppCompatActivity {
 
     private Context mContext;
-    private Switch gatewaySwitch, receiveSMSSwitch, stickyNotificationSwitch;
+    private Switch gatewaySwitch, receiveSMSSwitch, stickyNotificationSwitch, rcsAutoClickSwitch;
     private EditText apiKeyEditText, fcmTokenEditText, deviceIdEditText, deviceNameEditText, smsSendDelayEditText;
     private Button registerDeviceBtn, grantSMSPermissionBtn, scanQRBtn, checkUpdatesBtn, configureFilterBtn;
+    private Button rcsOpenAccessibilityBtn, rcsTestTapBtn, rcsOverlayPermissionBtn;
     private ImageButton copyDeviceIdImgBtn;
-    private TextView deviceBrandAndModelTxt, deviceIdTxt, appVersionNameTxt, appVersionCodeTxt;
+    private TextView deviceBrandAndModelTxt, deviceIdTxt, appVersionNameTxt, appVersionCodeTxt, apiBaseUrlTxt, outboundPullDebugTxt, rcsTapPositionTxt;
     private RadioGroup defaultSimSlotRadioGroup;
     private static final int SCAN_QR_REQUEST_CODE = 49374;
     private static final int PERMISSION_REQUEST_CODE = 0;
     private static final long SMS_DELAY_SAVE_DEBOUNCE_MS = 3000L;
     private final Handler smsDelaySaveHandler = new Handler(Looper.getMainLooper());
+    private final Handler pullDebugHandler = new Handler(Looper.getMainLooper());
+    private final Runnable pullDebugRunnable = new Runnable() {
+        @Override
+        public void run() {
+            refreshOutboundPullDebugText();
+            pullDebugHandler.postDelayed(this, 2000L);
+        }
+    };
     private Runnable smsDelaySaveRunnable;
     private String deviceId = null;
     private static final String TAG = "MainActivity";
@@ -69,7 +88,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
         mContext = getApplicationContext();
         deviceId = SharedPreferenceHelper.getSharedPreferenceString(mContext, AppConstants.SHARED_PREFS_DEVICE_ID_KEY, "");
         setContentView(R.layout.activity_main);
@@ -89,9 +107,17 @@ public class MainActivity extends AppCompatActivity {
         defaultSimSlotRadioGroup = findViewById(R.id.defaultSimSlotRadioGroup);
         appVersionNameTxt = findViewById(R.id.appVersionNameTxt);
         appVersionCodeTxt = findViewById(R.id.appVersionCodeTxt);
+        apiBaseUrlTxt = findViewById(R.id.apiBaseUrlTxt);
+        outboundPullDebugTxt = findViewById(R.id.outboundPullDebugTxt);
         checkUpdatesBtn = findViewById(R.id.checkUpdatesBtn);
         configureFilterBtn = findViewById(R.id.configureFilterBtn);
         smsSendDelayEditText = findViewById(R.id.smsSendDelayEditText);
+        rcsAutoClickSwitch = findViewById(R.id.rcsAutoClickSwitch);
+        rcsTapPositionTxt = findViewById(R.id.rcsTapPositionTxt);
+        rcsOpenAccessibilityBtn = findViewById(R.id.rcsOpenAccessibilityBtn);
+        rcsTestTapBtn = findViewById(R.id.rcsTestTapBtn);
+        rcsOverlayPermissionBtn = findViewById(R.id.rcsOverlayPermissionBtn);
+        setupRcsTapTargetUi();
 
         deviceIdTxt.setText(deviceId);
         deviceIdEditText.setText(deviceId);
@@ -101,6 +127,8 @@ public class MainActivity extends AppCompatActivity {
         String versionName = BuildConfig.VERSION_NAME;
         appVersionNameTxt.setText(versionName);
         appVersionCodeTxt.setText(String.valueOf(BuildConfig.VERSION_CODE));
+        apiBaseUrlTxt.setText("API Base URL: " + BuildConfig.API_BASE_URL);
+        refreshOutboundPullDebugText();
         
         // Check for app version changes and report if needed
         if (VersionTracker.hasVersionChanged(mContext)) {
@@ -108,12 +136,16 @@ public class MainActivity extends AppCompatActivity {
             VersionTracker.reportVersionToServer(mContext);
         }
         
-        // Initialize Crashlytics with user information
-        FirebaseCrashlytics crashlytics = FirebaseCrashlytics.getInstance();
-        crashlytics.setCustomKey("device_id", deviceId != null ? deviceId : "not_registered");
-        crashlytics.setCustomKey("device_model", Build.MODEL);
-        crashlytics.setCustomKey("app_version", versionName);
-        crashlytics.setCustomKey("app_version_code", BuildConfig.VERSION_CODE);
+        // Keep app boot resilient in local/dev builds where Firebase config can be absent/placeholder.
+        try {
+            FirebaseCrashlytics crashlytics = FirebaseCrashlytics.getInstance();
+            crashlytics.setCustomKey("device_id", deviceId != null ? deviceId : "not_registered");
+            crashlytics.setCustomKey("device_model", Build.MODEL);
+            crashlytics.setCustomKey("app_version", versionName);
+            crashlytics.setCustomKey("app_version_code", BuildConfig.VERSION_CODE);
+        } catch (Exception e) {
+            Log.w(TAG, "Crashlytics unavailable; continuing without it", e);
+        }
 
         // Start sticky notification service if enabled
         boolean gatewayEnabled = SharedPreferenceHelper.getSharedPreferenceBoolean(mContext, AppConstants.SHARED_PREFS_GATEWAY_ENABLED_KEY, false);
@@ -124,9 +156,12 @@ public class MainActivity extends AppCompatActivity {
         }
 
         // Schedule heartbeat if device is enabled and registered
-        if (gatewayEnabled && !deviceId.isEmpty()) {
+        if (gatewayEnabled && deviceId != null && !deviceId.isEmpty()) {
             HeartbeatManager.scheduleHeartbeat(mContext);
             Log.d(TAG, "Scheduling heartbeat on app start");
+            String startupApiKey = SharedPreferenceHelper.getSharedPreferenceString(
+                    mContext, AppConstants.SHARED_PREFS_API_KEY_KEY, "");
+            OutboundSmsPullHelper.pullAndEnqueue(mContext, deviceId, startupApiKey);
         }
 
         if (deviceId == null || deviceId.isEmpty()) {
@@ -246,7 +281,7 @@ public class MainActivity extends AppCompatActivity {
         });
         scanQRBtn.setOnClickListener(view -> {
             IntentIntegrator intentIntegrator = new IntentIntegrator(MainActivity.this);
-            intentIntegrator.setPrompt("Go to textbee.dev/dashboard and click Register Device to generate QR Code");
+            intentIntegrator.setPrompt("Open your RCS Blink web dashboard and click Register Device to generate QR Code");
             intentIntegrator.setRequestCode(SCAN_QR_REQUEST_CODE);
             intentIntegrator.initiateScan();
         });
@@ -412,6 +447,17 @@ public class MainActivity extends AppCompatActivity {
         // Final fallback to generic error with status code
         return "An error occurred :( " + response.code();
     }
+
+    private String extractFailureMessage(Throwable throwable) {
+        if (throwable == null) {
+            return "Network request failed. Please verify API Base URL and API server.";
+        }
+        String message = throwable.getMessage() != null ? throwable.getMessage().trim() : "";
+        if (message.isEmpty()) {
+            return "Network request failed. Please verify API Base URL and API server.";
+        }
+        return message;
+    }
     
     /**
      * Apply the custom radio button style to a programmatically created radio button
@@ -468,22 +514,33 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void handleRegisterDevice() {
-        String newKey = apiKeyEditText.getText().toString();
+        String newKey = normalizeApiKeyInput(apiKeyEditText.getText().toString());
+        apiKeyEditText.setText(newKey);
         String deviceIdInput = deviceIdEditText.getText().toString();
         
         registerDeviceBtn.setEnabled(false);
         registerDeviceBtn.setText("Loading...");
         View view = findViewById(R.id.registerDeviceBtn);
 
-        FirebaseMessaging.getInstance().getToken()
+        try {
+            FirebaseApp.initializeApp(mContext);
+            FirebaseMessaging.getInstance().getToken()
                 .addOnCompleteListener(task -> {
+                    String token = "";
                     if (!task.isSuccessful()) {
-                        Snackbar.make(view, "Failed to obtain FCM Token :(", Snackbar.LENGTH_LONG).show();
-                        registerDeviceBtn.setEnabled(true);
-                        registerDeviceBtn.setText("Update");
-                        return;
+                        Log.w(TAG, "Failed to obtain FCM token during register", task.getException());
+                        String cachedToken = fcmTokenEditText.getText() != null
+                                ? fcmTokenEditText.getText().toString().trim()
+                                : "";
+                        token = cachedToken;
+                        Snackbar.make(
+                                view,
+                                "FCM token unavailable. Continuing without push token.",
+                                Snackbar.LENGTH_LONG
+                        ).show();
+                    } else {
+                        token = task.getResult();
                     }
-                    String token = task.getResult();
                     fcmTokenEditText.setText(token);
 
                     RegisterDeviceInputDTO registerDeviceInput = new RegisterDeviceInputDTO();
@@ -526,6 +583,8 @@ public class MainActivity extends AppCompatActivity {
                                 }
                                 SharedPreferenceHelper.setSharedPreferenceString(mContext, AppConstants.SHARED_PREFS_API_KEY_KEY, newKey);
                                 Snackbar.make(view, "Device Updated Successfully :)", Snackbar.LENGTH_LONG).show();
+                                persistDeviceIdFromResponseOrFallback(response, deviceIdInput);
+                                OutboundSmsPullHelper.pullAndEnqueue(mContext, deviceIdInput, newKey);
                                 
                                 // Update deviceId from response if available
                                 if (response.body() != null && response.body().data != null && response.body().data.get("_id") != null) {
@@ -569,7 +628,7 @@ public class MainActivity extends AppCompatActivity {
                             
                             @Override
                             public void onFailure(Call<RegisterDeviceResponseDTO> call, Throwable t) {
-                                Snackbar.make(view, "An error occurred :(", Snackbar.LENGTH_LONG).show();
+                                Snackbar.make(view, extractFailureMessage(t), Snackbar.LENGTH_LONG).show();
                                 Log.e(TAG, "API_ERROR "+ t.getMessage());
                                 Log.e(TAG, "API_ERROR "+ t.getLocalizedMessage());
                                 TextBeeUtils.logException(t, "Error registering device");
@@ -625,6 +684,7 @@ public class MainActivity extends AppCompatActivity {
                                     HeartbeatManager.scheduleHeartbeat(mContext);
                                 }
                             }
+                            OutboundSmsPullHelper.pullAndEnqueue(mContext, deviceId, newKey);
                             
                             // Update stored version information
                             VersionTracker.updateStoredVersion(mContext);
@@ -634,7 +694,7 @@ public class MainActivity extends AppCompatActivity {
                         }
                         @Override
                         public void onFailure(Call<RegisterDeviceResponseDTO> call, Throwable t) {
-                            Snackbar.make(view, "An error occurred :(", Snackbar.LENGTH_LONG).show();
+                            Snackbar.make(view, extractFailureMessage(t), Snackbar.LENGTH_LONG).show();
                             Log.e(TAG, "API_ERROR "+ t.getMessage());
                             Log.e(TAG, "API_ERROR "+ t.getLocalizedMessage());
                             TextBeeUtils.logException(t, "Error registering device");
@@ -643,10 +703,86 @@ public class MainActivity extends AppCompatActivity {
                         }
                     });
                 });
+        } catch (Exception e) {
+            Log.w(TAG, "Firebase unavailable during register; continuing without FCM token", e);
+            RegisterDeviceInputDTO registerDeviceInput = new RegisterDeviceInputDTO();
+            registerDeviceInput.setEnabled(true);
+            registerDeviceInput.setFcmToken("");
+            registerDeviceInput.setBrand(Build.BRAND);
+            registerDeviceInput.setManufacturer(Build.MANUFACTURER);
+            registerDeviceInput.setModel(Build.MODEL);
+            registerDeviceInput.setBuildId(Build.ID);
+            registerDeviceInput.setOs(Build.VERSION.BASE_OS);
+            registerDeviceInput.setAppVersionCode(BuildConfig.VERSION_CODE);
+            registerDeviceInput.setAppVersionName(BuildConfig.VERSION_NAME);
+            String deviceName = deviceNameEditText.getText().toString().trim();
+            if (deviceName.isEmpty()) {
+                deviceName = Build.BRAND + " " + Build.MODEL;
+            }
+            registerDeviceInput.setName(deviceName);
+            SimInfoCollectionDTO simInfoCollection = new SimInfoCollectionDTO();
+            simInfoCollection.setLastUpdated(System.currentTimeMillis());
+            simInfoCollection.setSims(TextBeeUtils.collectSimInfo(mContext));
+            registerDeviceInput.setSimInfo(simInfoCollection);
+            if (!deviceIdInput.isEmpty()) {
+                ApiManager.getApiService().updateDevice(deviceIdInput, newKey, registerDeviceInput).enqueue(new Callback<RegisterDeviceResponseDTO>() {
+                    @Override
+                    public void onResponse(Call<RegisterDeviceResponseDTO> call, Response<RegisterDeviceResponseDTO> response) {
+                        if (!response.isSuccessful()) {
+                            Snackbar.make(view, extractErrorMessage(response), Snackbar.LENGTH_LONG).show();
+                            registerDeviceBtn.setEnabled(true);
+                            registerDeviceBtn.setText("Update");
+                            return;
+                        }
+                        SharedPreferenceHelper.setSharedPreferenceString(mContext, AppConstants.SHARED_PREFS_API_KEY_KEY, newKey);
+                        Snackbar.make(view, "Device Updated Successfully :)", Snackbar.LENGTH_LONG).show();
+                        persistDeviceIdFromResponseOrFallback(response, deviceIdInput);
+                        OutboundSmsPullHelper.pullAndEnqueue(mContext, deviceIdInput, newKey);
+                        registerDeviceBtn.setEnabled(true);
+                        registerDeviceBtn.setText("Update");
+                    }
+
+                    @Override
+                    public void onFailure(Call<RegisterDeviceResponseDTO> call, Throwable t) {
+                        Snackbar.make(view, "An error occurred :(", Snackbar.LENGTH_LONG).show();
+                        registerDeviceBtn.setEnabled(true);
+                        registerDeviceBtn.setText("Update");
+                    }
+                });
+                return;
+            }
+            ApiManager.getApiService().registerDevice(newKey, registerDeviceInput).enqueue(new Callback<RegisterDeviceResponseDTO>() {
+                @Override
+                public void onResponse(Call<RegisterDeviceResponseDTO> call, Response<RegisterDeviceResponseDTO> response) {
+                    if (!response.isSuccessful()) {
+                        Snackbar.make(view, extractErrorMessage(response), Snackbar.LENGTH_LONG).show();
+                        registerDeviceBtn.setEnabled(true);
+                        registerDeviceBtn.setText("Update");
+                        return;
+                    }
+                    SharedPreferenceHelper.setSharedPreferenceString(mContext, AppConstants.SHARED_PREFS_API_KEY_KEY, newKey);
+                    Snackbar.make(view, "Device Registration Successful :)", Snackbar.LENGTH_LONG).show();
+                    if (response.body() != null && response.body().data != null && response.body().data.get("_id") != null) {
+                        deviceId = response.body().data.get("_id").toString();
+                    }
+                    OutboundSmsPullHelper.pullAndEnqueue(mContext, deviceId, newKey);
+                    registerDeviceBtn.setEnabled(true);
+                    registerDeviceBtn.setText("Update");
+                }
+
+                @Override
+                public void onFailure(Call<RegisterDeviceResponseDTO> call, Throwable t) {
+                    Snackbar.make(view, extractFailureMessage(t), Snackbar.LENGTH_LONG).show();
+                    registerDeviceBtn.setEnabled(true);
+                    registerDeviceBtn.setText("Update");
+                }
+            });
+        }
     }
 
     private void handleUpdateDevice() {
-        String apiKey = apiKeyEditText.getText().toString();
+        String apiKey = normalizeApiKeyInput(apiKeyEditText.getText().toString());
+        apiKeyEditText.setText(apiKey);
         String deviceIdInput = deviceIdEditText.getText().toString();
         String deviceIdToUse = !deviceIdInput.isEmpty() ? deviceIdInput : deviceId;
         
@@ -654,15 +790,25 @@ public class MainActivity extends AppCompatActivity {
         registerDeviceBtn.setText("Loading...");
         View view = findViewById(R.id.registerDeviceBtn);
 
-        FirebaseMessaging.getInstance().getToken()
+        try {
+            FirebaseApp.initializeApp(mContext);
+            FirebaseMessaging.getInstance().getToken()
                 .addOnCompleteListener(task -> {
+                    String token = "";
                     if (!task.isSuccessful()) {
-                        Snackbar.make(view, "Failed to obtain FCM Token :(", Snackbar.LENGTH_LONG).show();
-                        registerDeviceBtn.setEnabled(true);
-                        registerDeviceBtn.setText("Update");
-                        return;
+                        Log.w(TAG, "Failed to obtain FCM token during update", task.getException());
+                        String cachedToken = fcmTokenEditText.getText() != null
+                                ? fcmTokenEditText.getText().toString().trim()
+                                : "";
+                        token = cachedToken;
+                        Snackbar.make(
+                                view,
+                                "FCM token unavailable. Continuing without push token.",
+                                Snackbar.LENGTH_LONG
+                        ).show();
+                    } else {
+                        token = task.getResult();
                     }
-                    String token = task.getResult();
                     fcmTokenEditText.setText(token);
 
                     RegisterDeviceInputDTO updateDeviceInput = new RegisterDeviceInputDTO();
@@ -701,6 +847,7 @@ public class MainActivity extends AppCompatActivity {
                                 return;
                             }
                             SharedPreferenceHelper.setSharedPreferenceString(mContext, AppConstants.SHARED_PREFS_API_KEY_KEY, apiKey);
+                            persistDeviceIdFromResponseOrFallback(response, deviceIdToUse);
                             
                             // Update deviceId from response if available
                             if (response.body() != null && response.body().data != null && response.body().data.get("_id") != null) {
@@ -737,13 +884,14 @@ public class MainActivity extends AppCompatActivity {
                             VersionTracker.updateStoredVersion(mContext);
                             
                             Snackbar.make(view, "Device Updated Successfully :)", Snackbar.LENGTH_LONG).show();
+                            OutboundSmsPullHelper.pullAndEnqueue(mContext, deviceIdToUse, apiKey);
                             registerDeviceBtn.setEnabled(true);
                             registerDeviceBtn.setText("Update");
                         }
 
                         @Override
                         public void onFailure(Call<RegisterDeviceResponseDTO> call, Throwable t) {
-                            Snackbar.make(view, "An error occurred :(", Snackbar.LENGTH_LONG).show();
+                            Snackbar.make(view, extractFailureMessage(t), Snackbar.LENGTH_LONG).show();
                             Log.e(TAG, "API_ERROR "+ t.getMessage());
                             Log.e(TAG, "API_ERROR "+ t.getLocalizedMessage());
                             TextBeeUtils.logException(t, "Error updating device");
@@ -752,6 +900,52 @@ public class MainActivity extends AppCompatActivity {
                         }
                     });
                 });
+        } catch (Exception e) {
+            Log.w(TAG, "Firebase unavailable during update; continuing without FCM token", e);
+            RegisterDeviceInputDTO updateDeviceInput = new RegisterDeviceInputDTO();
+            updateDeviceInput.setEnabled(true);
+            updateDeviceInput.setFcmToken("");
+            updateDeviceInput.setBrand(Build.BRAND);
+            updateDeviceInput.setManufacturer(Build.MANUFACTURER);
+            updateDeviceInput.setModel(Build.MODEL);
+            updateDeviceInput.setBuildId(Build.ID);
+            updateDeviceInput.setOs(Build.VERSION.BASE_OS);
+            updateDeviceInput.setAppVersionCode(BuildConfig.VERSION_CODE);
+            updateDeviceInput.setAppVersionName(BuildConfig.VERSION_NAME);
+            String deviceName = deviceNameEditText.getText().toString().trim();
+            if (deviceName.isEmpty()) {
+                deviceName = Build.BRAND + " " + Build.MODEL;
+            }
+            updateDeviceInput.setName(deviceName);
+            SimInfoCollectionDTO simInfoCollection = new SimInfoCollectionDTO();
+            simInfoCollection.setLastUpdated(System.currentTimeMillis());
+            simInfoCollection.setSims(TextBeeUtils.collectSimInfo(mContext));
+            updateDeviceInput.setSimInfo(simInfoCollection);
+            ApiManager.getApiService().updateDevice(deviceIdToUse, apiKey, updateDeviceInput).enqueue(new Callback<RegisterDeviceResponseDTO>() {
+                @Override
+                public void onResponse(Call<RegisterDeviceResponseDTO> call, Response<RegisterDeviceResponseDTO> response) {
+                    if (!response.isSuccessful()) {
+                        Snackbar.make(view, extractErrorMessage(response), Snackbar.LENGTH_LONG).show();
+                        registerDeviceBtn.setEnabled(true);
+                        registerDeviceBtn.setText("Update");
+                        return;
+                    }
+                    SharedPreferenceHelper.setSharedPreferenceString(mContext, AppConstants.SHARED_PREFS_API_KEY_KEY, apiKey);
+                    persistDeviceIdFromResponseOrFallback(response, deviceIdToUse);
+                    Snackbar.make(view, "Device Updated Successfully :)", Snackbar.LENGTH_LONG).show();
+                    OutboundSmsPullHelper.pullAndEnqueue(mContext, deviceIdToUse, apiKey);
+                    registerDeviceBtn.setEnabled(true);
+                    registerDeviceBtn.setText("Update");
+                }
+
+                @Override
+                public void onFailure(Call<RegisterDeviceResponseDTO> call, Throwable t) {
+                    Snackbar.make(view, extractFailureMessage(t), Snackbar.LENGTH_LONG).show();
+                    registerDeviceBtn.setEnabled(true);
+                    registerDeviceBtn.setText("Update");
+                }
+            });
+        }
     }
 
     private void handleRequestPermissions(View view) {
@@ -775,12 +969,187 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
             String scannedQR = intentResult.getContents();
-            apiKeyEditText.setText(scannedQR);
+            String normalizedApiKey = normalizeApiKeyInput(scannedQR);
+            if (normalizedApiKey.isEmpty()) {
+                Snackbar.make(findViewById(R.id.scanQRButton), "Invalid QR code. Scan Register Device QR from dashboard.", Snackbar.LENGTH_LONG).show();
+                return;
+            }
+            String existingApiKey = SharedPreferenceHelper.getSharedPreferenceString(
+                mContext,
+                AppConstants.SHARED_PREFS_API_KEY_KEY,
+                ""
+            );
+
+            // If scanned key changed, clear previously linked device to avoid
+            // unauthorized updates against a device owned by another key/account/backend.
+            if (!existingApiKey.isEmpty() && !existingApiKey.equals(normalizedApiKey)) {
+                deviceId = "";
+                deviceIdTxt.setText("");
+                deviceIdEditText.setText("");
+                SharedPreferenceHelper.clearSharedPreference(mContext, AppConstants.SHARED_PREFS_DEVICE_ID_KEY);
+            }
+
+            apiKeyEditText.setText(normalizedApiKey);
             if(deviceIdEditText.getText().toString().isEmpty()) {
                 handleRegisterDevice();
             } else {
                 handleUpdateDevice();
             }
+        }
+    }
+
+    private String normalizeApiKeyInput(String rawValue) {
+        if (rawValue == null) {
+            return "";
+        }
+        String normalized = rawValue.trim();
+        if (normalized.isEmpty()) {
+            return normalized;
+        }
+
+        try {
+            Uri uri = Uri.parse(normalized);
+            String apiKeyQueryParam = uri.getQueryParameter("apiKey");
+            if (apiKeyQueryParam != null && !apiKeyQueryParam.trim().isEmpty()) {
+                return apiKeyQueryParam.trim();
+            }
+        } catch (Exception ignored) {
+        }
+
+        // Some scanners include labels/newlines, keep only the last non-empty token.
+        String[] tokens = normalized.split("\\s+");
+        if (tokens.length > 1) {
+            return tokens[tokens.length - 1].trim();
+        }
+
+        return normalized;
+    }
+
+    private void persistDeviceIdFromResponseOrFallback(Response<RegisterDeviceResponseDTO> response, String fallbackDeviceId) {
+        String resolvedDeviceId = null;
+        if (response != null && response.body() != null && response.body().data != null && response.body().data.get("_id") != null) {
+            resolvedDeviceId = response.body().data.get("_id").toString();
+        } else if (fallbackDeviceId != null && !fallbackDeviceId.trim().isEmpty()) {
+            resolvedDeviceId = fallbackDeviceId.trim();
+        }
+
+        if (resolvedDeviceId == null || resolvedDeviceId.isEmpty()) {
+            return;
+        }
+
+        deviceId = resolvedDeviceId;
+        deviceIdTxt.setText(resolvedDeviceId);
+        deviceIdEditText.setText(resolvedDeviceId);
+        SharedPreferenceHelper.setSharedPreferenceString(mContext, AppConstants.SHARED_PREFS_DEVICE_ID_KEY, resolvedDeviceId);
+    }
+
+    private void refreshOutboundPullDebugText() {
+        long lastPullAtMs = SharedPreferenceHelper.getSharedPreferenceLong(
+                mContext,
+                AppConstants.SHARED_PREFS_OUTBOUND_PULL_LAST_AT_MS_KEY,
+                0L
+        );
+        int lastCount = SharedPreferenceHelper.getSharedPreferenceInt(
+                mContext,
+                AppConstants.SHARED_PREFS_OUTBOUND_PULL_LAST_COUNT_KEY,
+                0
+        );
+        String lastError = SharedPreferenceHelper.getSharedPreferenceString(
+                mContext,
+                AppConstants.SHARED_PREFS_OUTBOUND_PULL_LAST_ERROR_KEY,
+                ""
+        );
+
+        String timePart = "never";
+        if (lastPullAtMs > 0) {
+            timePart = new SimpleDateFormat("hh:mm:ss a", Locale.getDefault())
+                    .format(new Date(lastPullAtMs));
+        }
+
+        String errorPart = (lastError == null || lastError.trim().isEmpty()) ? "none" : lastError;
+        outboundPullDebugTxt.setText(
+                "Pull Debug | Last: " + timePart + " | Count: " + lastCount + " | Error: " + errorPart
+        );
+    }
+
+    private void setupRcsTapTargetUi() {
+        rcsAutoClickSwitch.setChecked(ComposerTapHelper.isAutoClickEnabled(mContext));
+        refreshRcsTapPositionText();
+
+        rcsAutoClickSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            ComposerTapHelper.setAutoClickEnabled(mContext, isChecked);
+            if (isChecked && !RCSAccessibilityService.isConnected()) {
+                Toast.makeText(mContext, "Enable RCS Blink in Accessibility settings", Toast.LENGTH_LONG).show();
+            }
+        });
+
+        rcsOpenAccessibilityBtn.setOnClickListener(v ->
+                startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)));
+
+        rcsOverlayPermissionBtn.setOnClickListener(v -> requestOverlayPermission());
+
+        rcsTestTapBtn.setOnClickListener(v -> {
+            if (!RCSAccessibilityService.isConnected()) {
+                Toast.makeText(mContext, "Enable Accessibility for RCS Blink first", Toast.LENGTH_LONG).show();
+                startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS));
+                return;
+            }
+            ComposerTapHelper.performTestClick(mContext);
+            Toast.makeText(mContext, "Test tap sent at saved position", Toast.LENGTH_SHORT).show();
+        });
+
+        ComposerTapHelper.setPositionSavedListener((x, y) -> runOnUiThread(this::refreshRcsTapPositionText));
+    }
+
+    private void refreshRcsTapPositionText() {
+        if (rcsTapPositionTxt == null) {
+            return;
+        }
+        int x = ComposerTapHelper.getTapX(mContext);
+        int y = ComposerTapHelper.getTapY(mContext);
+        rcsTapPositionTxt.setText("Tap position (screen): " + x + ", " + y);
+    }
+
+    private void requestOverlayPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
+            startActivity(new Intent(
+                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:" + getPackageName())
+            ));
+        } else {
+            Toast.makeText(mContext, "Overlay permission already granted", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void showFloatingCursorIfAllowed() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(this)) {
+            FloatingCursorService.show(this);
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        pullDebugHandler.removeCallbacks(pullDebugRunnable);
+        pullDebugHandler.post(pullDebugRunnable);
+        ComposerTapHelper.setPositionSavedListener((x, y) -> runOnUiThread(this::refreshRcsTapPositionText));
+        refreshRcsTapPositionText();
+        showFloatingCursorIfAllowed();
+        smsDelaySaveHandler.postDelayed(this::showFloatingCursorIfAllowed, 400);
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        pullDebugHandler.removeCallbacks(pullDebugRunnable);
+        ComposerTapHelper.setPositionSavedListener(null);
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if (!isChangingConfigurations()) {
+            FloatingCursorService.hide(this);
         }
     }
 

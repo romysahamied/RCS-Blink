@@ -25,6 +25,9 @@ public class AppConstants {
     public static final String SHARED_PREFS_SMS_FILTER_CONFIG_KEY = "SMS_FILTER_CONFIG";
     public static final String SHARED_PREFS_DEVICE_NAME_KEY = "DEVICE_NAME";
     public static final String SHARED_PREFS_SMS_SEND_DELAY_SECONDS_KEY = "SMS_SEND_DELAY_SECONDS";
-    /** Default delay between SMS sends (seconds). 5s helps avoid carrier/device throttling. */
-    public static final int DEFAULT_SMS_SEND_DELAY_SECONDS = 5;
+    public static final String SHARED_PREFS_OUTBOUND_PULL_LAST_AT_MS_KEY = "OUTBOUND_PULL_LAST_AT_MS";
+    public static final String SHARED_PREFS_OUTBOUND_PULL_LAST_COUNT_KEY = "OUTBOUND_PULL_LAST_COUNT";
+    public static final String SHARED_PREFS_OUTBOUND_PULL_LAST_ERROR_KEY = "OUTBOUND_PULL_LAST_ERROR";
+    /** Default delay between SMS sends (seconds). Keep 0 for low-latency delivery. */
+    public static final int DEFAULT_SMS_SEND_DELAY_SECONDS = 0;
 }

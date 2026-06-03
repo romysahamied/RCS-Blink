@@ -10,6 +10,7 @@ import android.os.StatFs;
 import android.os.SystemClock;
 import android.util.Log;
 
+import com.google.firebase.FirebaseApp;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.vernu.sms.ApiManager;
 import com.vernu.sms.AppConstants;
@@ -59,6 +60,7 @@ public class HeartbeatHelper {
             try {
                 CountDownLatch latch = new CountDownLatch(1);
                 final String[] fcmToken = new String[1];
+                FirebaseApp.initializeApp(context);
                 FirebaseMessaging.getInstance().getToken().addOnCompleteListener(task -> {
                     if (task.isSuccessful()) {
                         fcmToken[0] = task.getResult();
@@ -171,6 +173,9 @@ public class HeartbeatHelper {
                     );
                     Log.d(TAG, "Synced device name from heartbeat: " + responseBody.name);
                 }
+
+                // Dev/local fallback transport: pull outbound SMS when heartbeat succeeds.
+                OutboundSmsPullHelper.pullAndEnqueue(context, deviceId, apiKey);
                 
                 Log.d(TAG, "Heartbeat sent successfully");
                 return true;

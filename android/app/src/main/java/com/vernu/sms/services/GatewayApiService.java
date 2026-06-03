@@ -6,6 +6,7 @@ import com.vernu.sms.dtos.RegisterDeviceInputDTO;
 import com.vernu.sms.dtos.RegisterDeviceResponseDTO;
 import com.vernu.sms.dtos.HeartbeatInputDTO;
 import com.vernu.sms.dtos.HeartbeatResponseDTO;
+import com.vernu.sms.dtos.PullPendingSmsResponseDTO;
 
 import retrofit2.Call;
 import retrofit2.http.Body;
@@ -13,6 +14,7 @@ import retrofit2.http.Header;
 import retrofit2.http.PATCH;
 import retrofit2.http.POST;
 import retrofit2.http.Path;
+import retrofit2.http.Query;
 
 public interface GatewayApiService {
     @POST("gateway/devices")
@@ -29,4 +31,11 @@ public interface GatewayApiService {
 
     @POST("gateway/devices/{deviceId}/heartbeat")
     Call<HeartbeatResponseDTO> heartbeat(@Path("deviceId") String deviceId, @Header("x-api-key") String apiKey, @Body() HeartbeatInputDTO body);
+
+    @POST("gateway/devices/{deviceId}/pull-sms")
+    Call<PullPendingSmsResponseDTO> pullPendingSms(
+            @Path("deviceId") String deviceId,
+            @Header("x-api-key") String apiKey,
+            @Query("limit") int limit
+    );
 }

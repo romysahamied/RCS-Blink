@@ -20,7 +20,7 @@ export default function DashboardLayout({
   return (
     <div className='flex min-h-screen flex-col md:flex-row'>
       {/* Sidebar for desktop */}
-      <aside className='hidden md:flex flex-col fixed top-[20%] left-0 w-24 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 shadow-lg z-10 rounded-r-lg'>
+      <aside className='hidden md:flex flex-col fixed top-[20%] left-0 w-24 bg-white border-r border-purple-100 shadow-lg z-10 rounded-r-lg'>
         <nav className='flex flex-col justify-center items-center h-full py-3 space-y-4'>
           <NavItem
             href='/dashboard'
@@ -62,7 +62,7 @@ export default function DashboardLayout({
       </main>
 
       {/* Bottom navigation for mobile */}
-      <nav className='md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shadow-lg z-10'>
+      <nav className='md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-purple-100 shadow-lg z-10'>
         <div className='flex items-center justify-around h-16'>
           <MobileNavItem
             href='/dashboard'
@@ -117,15 +117,15 @@ function NavItem({
       href={href}
       prefetch={true}
       className={`flex flex-col items-center p-2 rounded-md transition-colors w-20 ${isActive
-        ? 'border border-brand-500 dark:border-brand-400 bg-brand-100/20 dark:bg-brand-900/10 text-brand-600 dark:text-brand-400'
-        : 'text-gray-700 dark:text-gray-200 hover:bg-brand-100/20 dark:hover:bg-brand-900/10 hover:text-brand-600 dark:hover:text-brand-400'
+        ? 'border border-brand-500 bg-brand-50 text-brand-700'
+        : 'text-gray-700 hover:bg-brand-50 hover:text-brand-700'
         }`}
     >
       <span
         className={
           isActive
-            ? 'text-brand-600 dark:text-brand-400 mb-1'
-            : 'text-gray-600 dark:text-gray-300 mb-1'
+            ? 'text-brand-600 mb-1'
+            : 'text-gray-600 mb-1'
         }
       >
         {icon}
@@ -152,15 +152,15 @@ function MobileNavItem({
       href={href}
       prefetch={true}
       className={`flex flex-col items-center justify-center p-2 rounded-md w-[23%] ${isActive
-        ? 'border border-brand-500 dark:border-brand-400 bg-brand-100/20 dark:bg-brand-900/10 text-brand-600 dark:text-brand-400'
-        : 'text-gray-700 dark:text-gray-300 hover:text-brand-600 dark:hover:text-brand-400'
+        ? 'border border-brand-500 bg-brand-50 text-brand-700'
+        : 'text-gray-700 hover:text-brand-600'
         }`}
     >
       <span
         className={
           isActive
-            ? 'text-brand-600 dark:text-brand-400'
-            : 'text-gray-600 dark:text-gray-300'
+            ? 'text-brand-600'
+            : 'text-gray-600'
         }
       >
         {icon}

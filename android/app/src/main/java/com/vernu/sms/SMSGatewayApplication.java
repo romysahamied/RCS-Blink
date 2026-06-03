@@ -3,6 +3,8 @@ package com.vernu.sms;
 import android.app.Application;
 import android.util.Log;
 
+import com.google.firebase.FirebaseApp;
+
 import androidx.work.Configuration;
 import androidx.work.WorkManager;
 
@@ -12,6 +14,14 @@ public class SMSGatewayApplication extends Application implements Configuration.
     @Override
     public void onCreate() {
         super.onCreate();
+
+        // Ensure Firebase is initialized before any Messaging/Crashlytics usage.
+        try {
+            FirebaseApp.initializeApp(this);
+            Log.d(TAG, "Firebase initialized successfully");
+        } catch (Exception e) {
+            Log.w(TAG, "Firebase initialization failed; app will continue without Firebase features", e);
+        }
         
         // Initialize WorkManager early to ensure it's ready for background work
         // This is important for background tasks like heartbeat

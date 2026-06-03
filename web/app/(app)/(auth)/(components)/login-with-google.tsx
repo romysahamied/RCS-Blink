@@ -10,6 +10,11 @@ export default function LoginWithGoogle() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirect = searchParams.get('redirect')
+  const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID?.trim()
+
+  if (!googleClientId) {
+    return null
+  }
 
   const onGoogleLoginSuccess = async (
     credentialResponse: CredentialResponse

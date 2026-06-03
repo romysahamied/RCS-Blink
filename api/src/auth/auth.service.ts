@@ -206,7 +206,15 @@ export class AuthService {
       context: { name: user.name, resetLink, otp },
     })
 
-    return { message: 'Password reset email sent' }
+    const isMailConfigured = !!process.env.MAIL_HOST?.trim()
+    const isLocalOrDev =
+      process.env.NODE_ENV !== 'production' ||
+      process.env.FRONTEND_URL?.includes('localhost')
+
+    return {
+      message: 'Password reset email sent',
+      ...(isLocalOrDev && !isMailConfigured ? { resetLink } : {}),
+    }
   }
 
   async resetPassword({ email, otp, newPassword }: ResetPasswordInputDTO) {
@@ -312,7 +320,15 @@ export class AuthService {
       },
     })
 
-    return { message: 'Email verification email sent' }
+    const isMailConfigured = !!process.env.MAIL_HOST?.trim()
+    const isLocalOrDev =
+      process.env.NODE_ENV !== 'production' ||
+      process.env.FRONTEND_URL?.includes('localhost')
+
+    return {
+      message: 'Email verification email sent',
+      ...(isLocalOrDev && !isMailConfigured ? { verificationLink } : {}),
+    }
   }
 
   async verifyEmail({ userId, verificationCode }) {

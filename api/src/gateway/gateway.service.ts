@@ -7,6 +7,8 @@ import { DeviceTombstone, DeviceTombstoneDocument } from './schemas/device-tombs
 import {
   ReceivedSMSDTO,
   RegisterDeviceInputDTO,
+  PullPendingSMSResponseDTO,
+  
   RetrieveSMSDTO,
   SendBulkSMSInputDTO,
   SendSMSInputDTO,
@@ -14,6 +16,7 @@ import {
   HeartbeatInputDTO,
   HeartbeatResponseDTO,
 } from './gateway.dto'
+
 import { User } from '../users/schemas/user.schema'
 import { AuthService } from '../auth/auth.service'
 import { SMS } from './schemas/sms.schema'
@@ -24,6 +27,8 @@ import { WebhookEvent } from '../webhook/webhook-event.enum'
 import { WebhookService } from '../webhook/webhook.service'
 import { BillingService } from '../billing/billing.service'
 import { SmsQueueService } from './queue/sms-queue.service'
+import { MessageChannel } from './message-channel.enum'
+import { RcsProviderService } from './transport/rcs-provider.service'
 
 @Injectable()
 export class GatewayService {
@@ -37,6 +42,7 @@ export class GatewayService {
     private webhookService: WebhookService,
     private billingService: BillingService,
     private smsQueueService: SmsQueueService,
+    private rcsProviderService: RcsProviderService,
   ) {}
 
   async registerDevice(
@@ -210,6 +216,113 @@ export class GatewayService {
     }
   }
 
+  private resolveChannel(rawChannel?: string): MessageChannel {
+    if (!rawChannel) {
+      return MessageChannel.SMS
+    }
+
+    const normalizedChannel = rawChannel.toLowerCase()
+    if (!Object.values(MessageChannel).includes(normalizedChannel as MessageChannel)) {
+      throw new HttpException(
+        {
+          success: false,
+          error: 'Invalid channel. Allowed values are sms and rcs.',
+        },
+        HttpStatus.BAD_REQUEST,
+      )
+    }
+
+    return normalizedChannel as MessageChannel
+  }
+
+  private assertChannelIsSupported(channel: MessageChannel) {
+    if (channel === MessageChannel.SMS || channel === MessageChannel.RCS) {
+      return
+    }
+
+    throw new HttpException(
+      {
+        success: false,
+        error: 'Invalid channel. Allowed values are sms and rcs.',
+      },
+      HttpStatus.BAD_REQUEST,
+    )
+  }
+
+  private assertDeviceCanReceivePush(device: DeviceDocument) {
+    const isLocalFallbackAllowed = process.env.NODE_ENV !== 'production'
+
+    if (isLocalFallbackAllowed) {
+      return
+    }
+
+    if (!device.fcmToken || !String(device.fcmToken).trim()) {
+      throw new HttpException(
+        {
+          success: false,
+          error:
+            'Device FCM token is missing. Open the mobile app and tap Update to resync the device token.',
+        },
+        HttpStatus.BAD_REQUEST,
+      )
+    }
+
+    if (device.fcmTokenInvalidatedAt) {
+      throw new HttpException(
+        {
+          success: false,
+          error:
+            'Device FCM token is invalid. Open the mobile app and tap Update to refresh the token.',
+          additionalInfo: {
+            invalidatedAt: device.fcmTokenInvalidatedAt,
+            reason: device.fcmTokenInvalidReason,
+          },
+        },
+        HttpStatus.BAD_REQUEST,
+      )
+    }
+  }
+
+  private shouldUseDevPullFallbackWithoutFirebase(): boolean {
+    return (
+      process.env.NODE_ENV !== 'production' &&
+      (!firebaseAdmin.apps || firebaseAdmin.apps.length === 0)
+    )
+  }
+
+  private extractFirebaseErrorCode(error: any): string | undefined {
+    return (
+      error?.errorInfo?.code ||
+      error?.code ||
+      error?.additionalInfo?.responses?.[0]?.error?.errorInfo?.code ||
+      error?.additionalInfo?.responses?.[0]?.error?.code
+    )
+  }
+
+  private async invalidateDeviceFcmTokenIfPermanentFailure(
+    deviceId: string,
+    firebaseErrorCode?: string,
+  ) {
+    if (!firebaseErrorCode) return
+
+    const normalized = String(firebaseErrorCode).toLowerCase()
+    const isPermanentTokenError =
+      normalized.includes('registration-token-not-registered') ||
+      normalized.includes('invalid-registration-token')
+
+    if (!isPermanentTokenError) return
+
+    await this.deviceModel
+      .findByIdAndUpdate(deviceId, {
+        $set: {
+          fcmTokenInvalidatedAt: new Date(),
+          fcmTokenInvalidReason: firebaseErrorCode,
+        },
+      })
+      .exec()
+      .catch(() => undefined)
+  }
+
   async sendSMS(deviceId: string, smsData: SendSMSInputDTO): Promise<any> {
     const device = await this.deviceModel.findById(deviceId)
 
@@ -225,6 +338,11 @@ export class GatewayService {
 
     const message = smsData.message || smsData.smsBody
     const recipients = smsData.recipients || smsData.receivers
+    const channel = this.resolveChannel(smsData.channel)
+    const dispatchPlan = this.rcsProviderService.createDispatchPlan(channel)
+    this.assertChannelIsSupported(channel)
+    this.assertDeviceCanReceivePush(device)
+    const normalizedFcmToken = String(device.fcmToken || '').trim()
 
     if (!message) {
       throw new HttpException(
@@ -306,6 +424,17 @@ export class GatewayService {
         ...(smsData.simSubscriptionId !== undefined && {
           simSubscriptionId: smsData.simSubscriptionId,
         }),
+        channel,
+        metadata: {
+          requestedChannel: dispatchPlan.requestedChannel,
+          dispatchChannel: dispatchPlan.dispatchChannel,
+          ...(dispatchPlan.dispatchChannel === MessageChannel.RCS && {
+            deliveryMode: 'messaging_composer',
+          }),
+          ...(dispatchPlan.fallbackReason && {
+            rcsFallbackReason: dispatchPlan.fallbackReason,
+          }),
+        },
       })
       const updatedSMSData = {
         smsId: sms._id,
@@ -315,6 +444,7 @@ export class GatewayService {
         ...(smsData.simSubscriptionId !== undefined && {
           simSubscriptionId: smsData.simSubscriptionId,
         }),
+        channel: dispatchPlan.dispatchChannel,
 
         // Legacy fields to be removed in the future
         smsBody: message,
@@ -326,7 +456,7 @@ export class GatewayService {
         data: {
           smsData: stringifiedSMSData,
         },
-        token: device.fcmToken,
+        token: normalizedFcmToken,
         android: {
           priority: 'high',
         },
@@ -357,25 +487,21 @@ export class GatewayService {
           recipientCount: recipients.length,
         }
       } catch (e) {
-        // Update batch status to failed
-        await this.smsBatchModel.findByIdAndUpdate(smsBatch._id, {
-          $set: { status: 'failed', error: e.message },
-        })
-
-        // Update all SMS in batch to failed
-        await this.smsModel.updateMany(
-          { smsBatch: smsBatch._id },
-          { $set: { status: 'failed', error: e.message } },
+        console.warn(
+          '[GatewayService] Failed to add SMS to queue. Falling back to direct send.',
+          e?.message || e,
         )
+      }
+    }
 
-        throw new HttpException(
-          {
-            success: false,
-            error: 'Failed to add SMS to queue',
-            additionalInfo: e,
-          },
-          HttpStatus.INTERNAL_SERVER_ERROR,
-        )
+    if (this.shouldUseDevPullFallbackWithoutFirebase() || !normalizedFcmToken) {
+      return {
+        success: true,
+        message: !normalizedFcmToken
+          ? 'SMS queued for device pull fallback (missing FCM token on device)'
+          : 'SMS queued for device pull (dev fallback, Firebase disabled)',
+        smsBatchId: smsBatch._id,
+        recipientCount: recipients.length,
       }
     }
 
@@ -385,14 +511,28 @@ export class GatewayService {
       console.log(response)
 
       if (response.successCount === 0) {
-        throw new HttpException(
-          {
-            success: false,
-            error: 'Failed to send SMS',
-            additionalInfo: response,
-          },
-          HttpStatus.BAD_REQUEST,
+        const firebaseErrorCode = this.extractFirebaseErrorCode(
+          response.responses?.[0]?.error,
         )
+        console.warn(
+          '[GatewayService] FCM sendEach returned zero success responses.',
+          {
+            deviceId,
+            firebaseErrorCode,
+          },
+        )
+        await this.invalidateDeviceFcmTokenIfPermanentFailure(
+          deviceId,
+          firebaseErrorCode,
+        )
+
+        return {
+          success: true,
+          message:
+            'SMS queued for device pull fallback after FCM push failure',
+          smsBatchId: smsBatch._id,
+          recipientCount: recipients.length,
+        }
       }
 
       this.deviceModel
@@ -416,6 +556,31 @@ export class GatewayService {
 
       return response
     } catch (e) {
+      // If Firebase push fails (e.g., stale/invalid token), keep delivery working by
+      // falling back to device pull transport instead of returning an error to web.
+      if (!this.smsQueueService.isQueueEnabled()) {
+        const firebaseErrorCode = this.extractFirebaseErrorCode(e)
+        await this.invalidateDeviceFcmTokenIfPermanentFailure(
+          deviceId,
+          firebaseErrorCode,
+        )
+        console.warn(
+          '[GatewayService] FCM send failed, falling back to device pull transport.',
+          {
+            deviceId,
+            firebaseErrorCode,
+            message: e?.message || e,
+          },
+        )
+        return {
+          success: true,
+          message:
+            'SMS queued for device pull fallback after FCM push failure',
+          smsBatchId: smsBatch._id,
+          recipientCount: recipients.length,
+        }
+      }
+
       this.smsBatchModel
         .findByIdAndUpdate(smsBatch._id, {
           $set: { status: 'failed', error: e.message },
@@ -462,6 +627,9 @@ export class GatewayService {
       )
     }
 
+    this.assertDeviceCanReceivePush(device)
+    const normalizedFcmToken = String(device.fcmToken || '').trim()
+
     await this.billingService.canPerformAction(
       device.user.toString(),
       'bulk_send_sms',
@@ -502,12 +670,18 @@ export class GatewayService {
       recipient: string
       message: string
       simSubscriptionId?: number
+      channel: MessageChannel
+      requestedChannel: MessageChannel
+      fallbackReason?: string
       delayMs?: number
     }> = []
 
     for (const smsData of messages) {
       const message = smsData.message
       const recipients = smsData.recipients
+      const channel = this.resolveChannel(smsData.channel)
+      const dispatchPlan = this.rcsProviderService.createDispatchPlan(channel)
+      this.assertChannelIsSupported(channel)
 
       if (!message) {
         continue
@@ -534,6 +708,17 @@ export class GatewayService {
           ...(smsData.simSubscriptionId !== undefined && {
             simSubscriptionId: smsData.simSubscriptionId,
           }),
+          channel: dispatchPlan.dispatchChannel,
+          metadata: {
+            requestedChannel: dispatchPlan.requestedChannel,
+            dispatchChannel: dispatchPlan.dispatchChannel,
+            ...(dispatchPlan.dispatchChannel === MessageChannel.RCS && {
+              deliveryMode: 'messaging_composer',
+            }),
+            ...(dispatchPlan.fallbackReason && {
+              rcsFallbackReason: dispatchPlan.fallbackReason,
+            }),
+          },
         })
         smsToFcmMetadata.push({
           recipient,
@@ -541,6 +726,9 @@ export class GatewayService {
           ...(smsData.simSubscriptionId !== undefined && {
             simSubscriptionId: smsData.simSubscriptionId,
           }),
+          channel: dispatchPlan.dispatchChannel,
+          requestedChannel: dispatchPlan.requestedChannel,
+          fallbackReason: dispatchPlan.fallbackReason,
           delayMs,
         })
       }
@@ -585,6 +773,14 @@ export class GatewayService {
         ...(metadata.simSubscriptionId !== undefined && {
           simSubscriptionId: metadata.simSubscriptionId,
         }),
+        channel: metadata.channel,
+        metadata: {
+          requestedChannel: metadata.requestedChannel,
+          dispatchChannel: metadata.channel,
+          ...(metadata.fallbackReason && {
+            rcsFallbackReason: metadata.fallbackReason,
+          }),
+        },
 
         // Legacy fields to be removed in the future
         smsBody: metadata.message,
@@ -596,7 +792,7 @@ export class GatewayService {
         data: {
           smsData: stringifiedSMSData,
         },
-        token: device.fcmToken,
+        token: normalizedFcmToken,
         android: {
           priority: 'high',
         },
@@ -634,30 +830,21 @@ export class GatewayService {
           recipientCount: messages.map((m) => m.recipients).flat().length,
         }
       } catch (e) {
-        // Update batch status to failed
-        await this.smsBatchModel.findByIdAndUpdate(smsBatch._id, {
-          $set: {
-            status: 'failed',
-            error: e.message,
-            successCount: 0,
-            failureCount: fcmMessagesWithDelays.length,
-          },
-        })
-
-        // Update all SMS in batch to failed
-        await this.smsModel.updateMany(
-          { smsBatch: smsBatch._id },
-          { $set: { status: 'failed', error: e.message } },
+        console.warn(
+          '[GatewayService] Failed to add bulk SMS to queue. Falling back to direct send.',
+          e?.message || e,
         )
+      }
+    }
 
-        throw new HttpException(
-          {
-            success: false,
-            error: 'Failed to add bulk SMS to queue',
-            additionalInfo: e,
-          },
-          HttpStatus.INTERNAL_SERVER_ERROR,
-        )
+    if (this.shouldUseDevPullFallbackWithoutFirebase() || !normalizedFcmToken) {
+      return {
+        success: true,
+        message: !normalizedFcmToken
+          ? 'Bulk SMS queued for device pull fallback (missing FCM token on device)'
+          : 'Bulk SMS queued for device pull (dev fallback, Firebase disabled)',
+        smsBatchId: smsBatch._id,
+        recipientCount: messages.map((m) => m.recipients).flat().length,
       }
     }
 
@@ -692,17 +879,13 @@ export class GatewayService {
             console.error('failed to update sms batch status to completed')
           })
       } catch (e) {
-        console.log('Failed to send SMS: FCM')
+        console.log(
+          'Failed to send SMS via FCM batch. Will keep pending for pull fallback.'
+        )
         console.log(e)
 
-        this.smsBatchModel
-          .findByIdAndUpdate(smsBatch._id, {
-            $set: { status: 'failed', error: e.message },
-          })
-          .exec()
-          .catch((e) => {
-            console.error('failed to update sms batch status to failed')
-          })
+        // Do not mark as failed when push fails; pending/dispatched records can still
+        // be delivered via device pull fallback transport.
       }
     }
 
@@ -1250,6 +1433,61 @@ const updatedSms = await this.smsModel.findByIdAndUpdate(
       fcmTokenUpdated,
       lastHeartbeat: now,
       name: updatedDevice?.name,
+    }
+  }
+
+  async pullPendingSMS(deviceId: string, limit = 25): Promise<PullPendingSMSResponseDTO> {
+    const boundedLimit = Math.max(1, Math.min(limit, 100))
+
+    const pendingSms = await this.smsModel
+      .find({
+        device: new Types.ObjectId(deviceId),
+        type: SMSType.SENT,
+        status: 'pending',
+      })
+      .sort({ requestedAt: 1, createdAt: 1 })
+      .limit(boundedLimit)
+
+    if (!pendingSms.length) {
+      return {
+        data: [],
+        count: 0,
+      }
+    }
+
+    const pendingIds = pendingSms.map((sms) => new Types.ObjectId(sms._id))
+    const now = new Date()
+
+    await this.smsModel.updateMany(
+      {
+        _id: { $in: pendingIds },
+        status: 'pending',
+      },
+      {
+        $set: { status: 'dispatched', dispatchedAt: now },
+      },
+    )
+
+    const claimedSms = await this.smsModel.find({
+      _id: { $in: pendingIds },
+      status: 'dispatched',
+      dispatchedAt: { $gte: new Date(now.getTime() - 60_000) },
+    })
+
+    const data = claimedSms.map((sms) => ({
+      smsId: sms._id.toString(),
+      smsBatchId: sms.smsBatch?.toString?.() || '',
+      message: sms.message,
+      recipients: [sms.recipient],
+      ...(sms.simSubscriptionId !== undefined && {
+        simSubscriptionId: sms.simSubscriptionId,
+      }),
+      channel: sms.channel || MessageChannel.SMS,
+    }))
+
+    return {
+      data,
+      count: data.length,
     }
   }
 }

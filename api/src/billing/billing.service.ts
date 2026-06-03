@@ -513,6 +513,12 @@ export class BillingService {
     value: number,
   ) {
     try {
+      // Local/dev workflows often replay many test sends quickly. Keep production
+      // enforcement intact, but avoid blocking gateway functionality in non-prod.
+      if (process.env.NODE_ENV !== 'production') {
+        return true
+      }
+
       const user = await this.userModel.findById(userId)
       if (user.isBanned) {
         throw new HttpException(

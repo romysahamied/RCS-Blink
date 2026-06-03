@@ -1,5 +1,6 @@
 import CredentialsProvider from 'next-auth/providers/credentials'
-import { httpServerClient } from './httpServerClient'
+import axios from 'axios'
+import { getServerSideBaseUrl, httpServerClient } from './httpServerClient'
 import { DefaultSession } from 'next-auth'
 import { ApiEndpoints } from '@/config/api'
 import { Routes } from '@/config/routes'
@@ -50,8 +51,14 @@ export const authOptions = {
             accessToken,
           }
         } catch (e) {
-          console.log(e)
-
+          if (axios.isAxiosError(e)) {
+            const msg = e.code === 'ECONNREFUSED'
+              ? `[auth] Login: cannot reach API at ${getServerSideBaseUrl()}. Is the Nest server running on port 3001?`
+              : `[auth] Login failed: ${e.response?.status ?? e.code} ${e.response?.data ? JSON.stringify(e.response.data) : e.message}`
+            console.error(msg)
+          } else {
+            console.error(e)
+          }
           return null
         }
       },
@@ -126,6 +133,7 @@ export const authOptions = {
   ],
   pages: {
     signIn: Routes.login,
+    error: Routes.authError,
   },
   session: {
     strategy: 'jwt',

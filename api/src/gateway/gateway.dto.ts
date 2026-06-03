@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger'
+import { MessageChannel } from './message-channel.enum'
 
 export class SimInfoDTO {
   @ApiProperty({ type: Number, required: true })
@@ -103,6 +104,15 @@ export class SMSData {
     description: 'Optional SIM subscription ID to use for sending SMS',
   })
   simSubscriptionId?: number
+
+  @ApiProperty({
+    type: String,
+    required: false,
+    enum: [MessageChannel.SMS, MessageChannel.RCS],
+    default: MessageChannel.SMS,
+    description: 'Delivery channel. Defaults to SMS.',
+  })
+  channel?: MessageChannel
 
   @ApiProperty({
     type: String,
@@ -254,6 +264,22 @@ export class RetrieveSMSDTO {
     description: 'The time the message was last updated',
   })
   updatedAt: Date
+
+  @ApiProperty({
+    type: String,
+    required: false,
+    enum: [MessageChannel.SMS, MessageChannel.RCS],
+    description: 'Stored dispatch channel for this outbound message.',
+  })
+  channel?: MessageChannel
+
+  @ApiProperty({
+    type: Object,
+    required: false,
+    description:
+      'Optional transport metadata (e.g. requestedChannel, dispatchChannel, provider, providerMessageId).',
+  })
+  metadata?: Record<string, any>
 }
 
 export class PaginationMetaDTO {
@@ -507,4 +533,36 @@ export class HeartbeatResponseDTO {
     description: 'Device name (if updated)',
   })
   name?: string
+}
+
+export class OutboundSMSPayloadDTO {
+  @ApiProperty({ type: String, required: true })
+  smsId: string
+
+  @ApiProperty({ type: String, required: true })
+  smsBatchId: string
+
+  @ApiProperty({ type: String, required: true })
+  message: string
+
+  @ApiProperty({ type: [String], required: true, example: ['+2519xxxxxxxx'] })
+  recipients: string[]
+
+  @ApiProperty({ type: Number, required: false })
+  simSubscriptionId?: number
+
+  @ApiProperty({
+    type: String,
+    required: true,
+    enum: [MessageChannel.SMS, MessageChannel.RCS],
+  })
+  channel: MessageChannel
+}
+
+export class PullPendingSMSResponseDTO {
+  @ApiProperty({ type: [OutboundSMSPayloadDTO], required: true })
+  data: OutboundSMSPayloadDTO[]
+
+  @ApiProperty({ type: Number, required: true })
+  count: number
 }

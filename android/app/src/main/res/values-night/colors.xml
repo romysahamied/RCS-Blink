@@ -8,10 +8,12 @@
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
     
-    <!-- Dark mode specific colors -->
-    <color name="background_primary">#121212</color>
-    <color name="background_secondary">#1E1E1E</color>
-    <color name="text_primary">#FFFFFF</color>
-    <color name="text_secondary">#B3FFFFFF</color> <!-- 70% white -->
-    <color name="divider">#454545</color>
+    <!-- Light purple/white theme in night mode -->
+    <color name="background_primary">#FFFFFF</color>
+    <color name="background_secondary">#F3E8FF</color>
+    <color name="text_primary">#1F1235</color>
+    <color name="text_secondary">#5B4B7A</color>
+    <color name="divider">#E9D5FF</color>
+    <color name="brand_primary">#7C3AED</color>
+    <color name="brand_primary_dark">#6D28D9</color>
 </resources> 

@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.os.Build;
 import android.util.Log;
 
+import com.google.firebase.FirebaseApp;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.vernu.sms.ApiManager;
 import com.vernu.sms.AppConstants;
@@ -74,7 +75,9 @@ public class BootCompletedReceiver extends BroadcastReceiver {
      * Updates device information on the server after boot
      */
     private void updateDeviceInfo(Context context, String deviceId, String apiKey) {
-        FirebaseMessaging.getInstance().getToken()
+        try {
+            FirebaseApp.initializeApp(context);
+            FirebaseMessaging.getInstance().getToken()
             .addOnCompleteListener(task -> {
                 if (!task.isSuccessful()) {
                     Log.e(TAG, "Failed to obtain FCM token after boot");
@@ -120,5 +123,8 @@ public class BootCompletedReceiver extends BroadcastReceiver {
                         }
                     });
             });
+        } catch (Exception e) {
+            Log.w(TAG, "Firebase unavailable after boot; skipping FCM token refresh", e);
+        }
     }
 }

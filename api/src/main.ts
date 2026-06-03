@@ -29,6 +29,8 @@ process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
 async function bootstrap() {
   const app: NestExpressApplication = await NestFactory.create(AppModule)
   const PORT = process.env.PORT || 3001
+  // Bind all interfaces so phones on the same LAN can reach dev (use PC's Wi‑Fi IPv4 in the app).
+  const LISTEN_HOST = process.env.LISTEN_HOST?.trim() || '0.0.0.0'
 
   app.setGlobalPrefix('api')
   app.enableVersioning({
@@ -54,22 +56,29 @@ async function bootstrap() {
     },
   })
 
-  const firebaseConfig = {
-    type: 'service_account',
-    projectId: process.env.FIREBASE_PROJECT_ID,
-    privateKeyId: process.env.FIREBASE_PRIVATE_KEY_ID,
-    privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-    clientId: process.env.FIREBASE_CLIENT_ID,
-    authUri: 'https://accounts.google.com/o/oauth2/auth',
-    tokenUri: 'https://oauth2.googleapis.com/token',
-    authProviderX509CertUrl: 'https://www.googleapis.com/oauth2/v1/certs',
-    clientC509CertUrl: process.env.FIREBASE_CLIENT_C509_CERT_URL,
+  if (process.env.FIREBASE_PROJECT_ID?.trim()) {
+    const firebaseConfig = {
+      type: 'service_account',
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      privateKeyId: process.env.FIREBASE_PRIVATE_KEY_ID,
+      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      clientId: process.env.FIREBASE_CLIENT_ID,
+      authUri: 'https://accounts.google.com/o/oauth2/auth',
+      tokenUri: 'https://oauth2.googleapis.com/token',
+      authProviderX509CertUrl: 'https://www.googleapis.com/oauth2/v1/certs',
+      clientC509CertUrl: process.env.FIREBASE_CLIENT_C509_CERT_URL,
+    }
+    if (!firebase.apps.length) {
+      firebase.initializeApp({
+        credential: firebase.credential.cert(firebaseConfig as firebase.ServiceAccount),
+      })
+    }
+  } else {
+    new Logger('Bootstrap').log(
+      'FIREBASE_* not set — Firebase Admin disabled (OK for local API/auth; FCM will not work).',
+    )
   }
-
-  firebase.initializeApp({
-    credential: firebase.credential.cert(firebaseConfig),
-  })
 
   app.use(
     '/api/v1/billing/webhook/polar',
@@ -77,6 +86,9 @@ async function bootstrap() {
   )
   app.useBodyParser('json', { limit: '2mb' });
   app.enableCors()
-  await app.listen(PORT)
+  await app.listen(PORT, LISTEN_HOST)
+  new Logger('Bootstrap').log(
+    `HTTP listening on ${LISTEN_HOST}:${PORT} (set LISTEN_HOST to override; point the app at this machine's LAN IPv4).`,
+  )
 }
 bootstrap()

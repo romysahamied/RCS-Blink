@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
+import { useEffect, useState } from 'react'
 
 import {
   Card,
@@ -19,6 +20,20 @@ import { Routes } from '@/config/routes'
 export default function LoginPage() {
   const searchParams = useSearchParams()
   const redirect = searchParams.get('redirect')
+  const authError = searchParams.get('error')
+  const [authErrorMessage, setAuthErrorMessage] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (authError === 'CredentialsSignin') {
+      setAuthErrorMessage(
+        'Sign-in failed. Check email and password, or ensure the API and database are running (see server logs).'
+      )
+    } else if (authError) {
+      setAuthErrorMessage('Sign-in failed. Please try again.')
+    } else {
+      setAuthErrorMessage(null)
+    }
+  }, [authError])
 
   return (
     <div className='flex items-center justify-center min-h-screen bg-gray-100 dark:bg-muted'>
@@ -32,6 +47,11 @@ export default function LoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {authErrorMessage && (
+            <p className='mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/50 dark:text-red-200'>
+              {authErrorMessage}
+            </p>
+          )}
           <LoginForm />
           <div className='relative mt-4'>
             <div className='absolute inset-0 flex items-center'>

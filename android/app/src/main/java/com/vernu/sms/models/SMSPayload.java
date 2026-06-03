@@ -8,6 +8,9 @@ public class SMSPayload {
     private String smsBatchId;
     private Integer simSubscriptionId;
 
+    /** Message channel from the API (e.g. {@code sms}, {@code rcs}). */
+    private String channel;
+
     // Legacy fields that are no longer used
     private String[] receivers;
     private String smsBody;
@@ -53,5 +56,13 @@ public class SMSPayload {
 
     public void setSimSubscriptionId(Integer simSubscriptionId) {
         this.simSubscriptionId = simSubscriptionId;
+    }
+
+    public String getChannel() {
+        return channel;
+    }
+
+    public void setChannel(String channel) {
+        this.channel = channel;
     }
 }

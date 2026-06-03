@@ -5,7 +5,7 @@ import { SessionProvider } from 'next-auth/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import httpBrowserClient from '@/lib/httpBrowserClient'
 import { ApiEndpoints } from '@/config/api'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { Routes } from '@/config/routes'
 import { ThemeProvider } from 'next-themes'
@@ -32,11 +32,11 @@ export default function LayoutWrapper({ session, children }) {
     }
   }, [pathname, router, session])
 
-  const queryClient = new QueryClient()
+  const [queryClient] = useState(() => new QueryClient())
 
   return (
     <>
-      <ThemeProvider attribute='class' defaultTheme='system' enableSystem>
+      <ThemeProvider attribute='class' defaultTheme='light' enableSystem>
         <SessionProvider session={session}>
           <QueryClientProvider client={queryClient}>
             <GoogleOAuthProvider

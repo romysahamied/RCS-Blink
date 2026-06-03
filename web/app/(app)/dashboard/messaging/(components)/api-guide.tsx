@@ -43,7 +43,7 @@ const response = await axios.post(
   \`\${BASE_URL}/gateway/devices/\${DEVICE_ID}/send-sms\`,
   {
     recipients: [ '+1234567890' ],
-    message: 'Hello from TextBee!'
+    message: 'Hello from RCS Blink!'
   },
   { headers: { 'x-api-key': API_KEY } }
 )
@@ -62,7 +62,7 @@ response = requests.post(
   f'{BASE_URL}/gateway/devices/{DEVICE_ID}/send-sms',
   json={
     'recipients': ['+1234567890'],
-    'message': 'Hello from TextBee!'
+    'message': 'Hello from RCS Blink!'
   },
   headers={'x-api-key': API_KEY}
 )
@@ -76,7 +76,7 @@ print(response.json())`
   -H 'Content-Type: application/json' \\
   -d '{
     "recipients": [ "+1234567890" ],
-    "message": "Hello from TextBee!"
+    "message": "Hello from RCS Blink!"
   }'`
         }
       },
@@ -85,7 +85,7 @@ print(response.json())`
         code: `{
   "data": {
     "_id": "sms_1234567890",
-    "message": "Hello from TextBee!",
+    "message": "Hello from RCS Blink!",
     "recipients": ["+1234567890"],
     "status": "PENDING",
     "createdAt": "2023-09-15T14:23:45Z"
@@ -143,7 +143,7 @@ print(response.json())`
         code: `{
   "data": {
     "_id": "sms_1234567890",
-    "message": "Hello from TextBee!",
+    "message": "Hello from RCS Blink!",
     "recipient": "+1234567890",
     "status": "DELIVERED",
     "sentAt": "2023-09-15T14:23:45Z",
@@ -209,7 +209,7 @@ print(response.json())`
       {
         "_id": "sms_1234567890",
         "recipient": "+1234567890",
-        "message": "Hello from TextBee!",
+        "message": "Hello from RCS Blink!",
         "status": "DELIVERED",
         "sentAt": "2023-09-15T14:23:45Z",
         "deliveredAt": "2023-09-15T14:23:48Z",
@@ -217,14 +217,14 @@ print(response.json())`
       {
         "_id": "sms_0987654321",
         "recipient": "+0987654321",
-        "message": "Hello from TextBee!",
+        "message": "Hello from RCS Blink!",
         "status": "SENT",
         "sentAt": "2023-09-15T14:23:45Z",
         "deliveredAt": null
       },{
         "_id": "sms_0987654321",
         "recipient": "+0987654321",
-        "message": "Hello from TextBee!",
+        "message": "Hello from RCS Blink!",
         "status": "FAILED",
         "sentAt": null,
         "deliveredAt": null,

@@ -19,9 +19,12 @@ import { WebhookEvent } from '../webhook/webhook-event.enum'
 import { RegisterDeviceInputDTO, SendBulkSMSInputDTO, SendSMSInputDTO } from './gateway.dto'
 import { User } from '../users/schemas/user.schema'
 import { BatchResponse } from 'firebase-admin/messaging'
+import { RcsProviderService } from './transport/rcs-provider.service'
+import { MessageChannel } from './message-channel.enum'
 
-// Mock firebase-admin
+// Mock firebase-admin — non-empty apps[] so sendSMS takes FCM path (not dev pull fallback)
 jest.mock('firebase-admin', () => ({
+  apps: [{}],
   messaging: jest.fn().mockReturnValue({
     sendEach: jest.fn(),
   }),
@@ -83,6 +86,30 @@ describe('GatewayService', () => {
     addSendSmsJob: jest.fn(),
   }
 
+  const mockRcsProviderService = {
+    createDispatchPlan: jest.fn((channel: MessageChannel) => {
+      if (channel === MessageChannel.RCS) {
+        return {
+          requestedChannel: MessageChannel.RCS,
+          dispatchChannel: MessageChannel.RCS,
+          usesExternalRcsProvider: false,
+        }
+      }
+      return {
+        requestedChannel: MessageChannel.SMS,
+        dispatchChannel: MessageChannel.SMS,
+        usesExternalRcsProvider: false,
+      }
+    }),
+    sendViaExternalProvider: jest.fn().mockResolvedValue({
+      success: true,
+      message: 'mock',
+      provider: 'mock',
+      providerMessageId: 'id',
+      acceptedCount: 1,
+    }),
+  }
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -118,6 +145,10 @@ describe('GatewayService', () => {
         {
           provide: SmsQueueService,
           useValue: mockSmsQueueService,
+        },
+        {
+          provide: RcsProviderService,
+          useValue: mockRcsProviderService,
         },
       ],
       imports: [ConfigModule],
@@ -440,16 +471,15 @@ describe('GatewayService', () => {
       expect(result).toHaveProperty('smsBatchId', mockSmsBatch._id)
     })
 
-    it('should handle queue error properly', async () => {
+    it('should fall back to direct FCM send when queue add fails', async () => {
       mockSmsQueueService.isQueueEnabled.mockReturnValue(true)
       mockSmsQueueService.addSendSmsJob.mockRejectedValue(new Error('Queue error'))
 
-      await expect(
-        service.sendSMS(mockDeviceId, mockSmsInput),
-      ).rejects.toThrow(HttpException)
-      
-      expect(mockSmsBatchModel.findByIdAndUpdate).toHaveBeenCalled()
-      expect(mockSmsModel.updateMany).toHaveBeenCalled()
+      const result = await service.sendSMS(mockDeviceId, mockSmsInput)
+
+      expect(mockSmsQueueService.addSendSmsJob).toHaveBeenCalled()
+      expect(firebaseAdmin.messaging().sendEach).toHaveBeenCalled()
+      expect(result).toEqual(mockFcmResponse)
     })
   })
 

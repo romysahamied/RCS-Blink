@@ -16,6 +16,11 @@ import { SmsQueueService } from './queue/sms-queue.service'
 import { SmsQueueProcessor } from './queue/sms-queue.processor'
 import { SmsStatusUpdateTask } from './tasks/sms-status-update.task'
 import { HeartbeatCheckTask } from './tasks/heartbeat-check.task'
+import { RcsProviderService } from './transport/rcs-provider.service'
+import { MockRcsProvider } from './transport/providers/mock-rcs.provider'
+import { GoogleRbmProvider } from './transport/providers/google-rbm.provider'
+import { GoogleRbmWebhookService } from './transport/google-rbm-webhook.service'
+import { GoogleRbmWebhookController } from './transport/google-rbm-webhook.controller'
 
 @Module({
   imports: [
@@ -63,8 +68,8 @@ import { HeartbeatCheckTask } from './tasks/heartbeat-check.task'
     forwardRef(() => BillingModule),
     ConfigModule,
   ],
-  controllers: [GatewayController],
-  providers: [GatewayService, SmsQueueService, SmsQueueProcessor, SmsStatusUpdateTask, HeartbeatCheckTask],
+  controllers: [GatewayController, GoogleRbmWebhookController],
+  providers: [GatewayService, SmsQueueService, SmsQueueProcessor, SmsStatusUpdateTask, HeartbeatCheckTask, RcsProviderService, MockRcsProvider, GoogleRbmProvider, GoogleRbmWebhookService],
   exports: [MongooseModule, GatewayService, SmsQueueService],
 })
 export class GatewayModule {}

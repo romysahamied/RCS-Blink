@@ -3,3 +3,18 @@
 *-monitor
 
 .cursor
+
+# Local secrets and tooling
+.env
+api/.env
+web/.env
+web/.env.local
+.local-tools/
+
+# Build artifacts and heavy local downloads
+node_modules/
+**/dist/
+android/gradle-7.2-bin.zip
+gradle-7.2/
+android/.gradle/
+android/app/build/

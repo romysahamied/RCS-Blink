@@ -3,6 +3,8 @@ import { getSession } from 'next-auth/react'
 
 const httpBrowserClient = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || '',
+  // Default axios timeout is 0 (wait forever) — unreachable API left the dashboard stuck on skeletons.
+  timeout: 25_000,
 })
 
 // Cache for session data to reduce API calls

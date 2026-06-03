@@ -81,7 +81,7 @@ export default function BlackFridayModal() {
                         🔥 Black Friday Sale
                     </DialogTitle>
                     <DialogDescription className="text-center text-base">
-                        Upgrade to Pro and unlock the full potential of textbee.
+                        Upgrade to Pro and unlock the full potential of RCS Blink.
                     </DialogDescription>
                 </DialogHeader>
 

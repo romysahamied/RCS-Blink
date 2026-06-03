@@ -6,7 +6,9 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.provider.Telephony;
 import android.util.Log;
 import android.widget.Toast;
@@ -17,11 +19,22 @@ import com.vernu.sms.R;
 import com.vernu.sms.activities.MainActivity;
 import com.vernu.sms.receivers.SMSBroadcastReceiver;
 import com.vernu.sms.AppConstants;
+import com.vernu.sms.helpers.OutboundSmsPullHelper;
 import com.vernu.sms.helpers.SharedPreferenceHelper;
 
 public class StickyNotificationService extends Service {
 
     private static final String TAG = "StickyNotificationService";
+    // Lower polling interval to reduce fallback transport latency in local/dev setups.
+    private static final long OUTBOUND_PULL_INTERVAL_MS = 2000L;
+    private final Handler pullHandler = new Handler(Looper.getMainLooper());
+    private final Runnable outboundPullRunnable = new Runnable() {
+        @Override
+        public void run() {
+            tryPullOutboundSms();
+            pullHandler.postDelayed(this, OUTBOUND_PULL_INTERVAL_MS);
+        }
+    };
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -59,14 +72,40 @@ public class StickyNotificationService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.i(TAG, "Received start id " + startId + ": " + intent);
+        pullHandler.removeCallbacks(outboundPullRunnable);
+        pullHandler.post(outboundPullRunnable);
         return START_STICKY;
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
+        pullHandler.removeCallbacks(outboundPullRunnable);
         
         Log.i(TAG, "StickyNotificationService destroyed");
+    }
+
+    private void tryPullOutboundSms() {
+        boolean gatewayEnabled = SharedPreferenceHelper.getSharedPreferenceBoolean(
+                getApplicationContext(),
+                AppConstants.SHARED_PREFS_GATEWAY_ENABLED_KEY,
+                false
+        );
+        if (!gatewayEnabled) {
+            return;
+        }
+
+        String deviceId = SharedPreferenceHelper.getSharedPreferenceString(
+                getApplicationContext(),
+                AppConstants.SHARED_PREFS_DEVICE_ID_KEY,
+                ""
+        );
+        String apiKey = SharedPreferenceHelper.getSharedPreferenceString(
+                getApplicationContext(),
+                AppConstants.SHARED_PREFS_API_KEY_KEY,
+                ""
+        );
+        OutboundSmsPullHelper.pullAndEnqueue(getApplicationContext(), deviceId, apiKey);
     }
 
     private Notification createNotification() {
@@ -84,18 +123,18 @@ public class StickyNotificationService extends Service {
             PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
 
             Notification.Builder builder = new Notification.Builder(this, notificationChannelId);
-            return builder.setContentTitle("TextBee Active")
+            return builder.setContentTitle("RCS Blink Active")
                     .setContentText("SMS gateway service is active")
                     .setContentIntent(pendingIntent)
                     .setOngoing(true)
-                    .setSmallIcon(R.mipmap.ic_launcher)
+                    .setSmallIcon(R.drawable.ic_notification)
                     .build();
         } else {
             NotificationCompat.Builder builder = new NotificationCompat.Builder(this, notificationChannelId);
-            return builder.setContentTitle("TextBee Active")
+            return builder.setContentTitle("RCS Blink Active")
                     .setContentText("SMS gateway service is active")
                     .setOngoing(true)
-                    .setSmallIcon(R.mipmap.ic_launcher)
+                    .setSmallIcon(R.drawable.ic_notification)
                     .build();
         }
 

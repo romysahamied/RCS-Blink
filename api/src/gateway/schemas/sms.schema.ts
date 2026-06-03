@@ -3,6 +3,7 @@ import { Document, Types } from 'mongoose'
 import { Device } from './device.schema'
 import { SMSBatch } from './sms-batch.schema'
 import { User } from '../../users/schemas/user.schema'
+import { MessageChannel } from '../message-channel.enum'
 
 export type SMSDocument = SMS & Document
 
@@ -78,6 +79,9 @@ export class SMS {
 
   @Prop({ type: Number, required: false })
   simSubscriptionId?: number
+
+  @Prop({ type: String, enum: Object.values(MessageChannel), default: MessageChannel.SMS })
+  channel: MessageChannel
 
   // misc metadata for debugging
   @Prop({ type: Object })

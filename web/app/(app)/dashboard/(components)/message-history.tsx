@@ -98,6 +98,18 @@ const getStatusBadge = (status: string) => {
   }
 }
 
+const getTransportInfo = (message: any) => {
+  const requestedChannel = message?.metadata?.requestedChannel || message?.channel
+  const dispatchChannel = message?.metadata?.dispatchChannel || message?.channel
+  const provider = message?.metadata?.provider || null
+
+  return {
+    requestedChannel: requestedChannel ? String(requestedChannel).toUpperCase() : null,
+    dispatchChannel: dispatchChannel ? String(dispatchChannel).toUpperCase() : null,
+    provider: provider ? String(provider) : null,
+  }
+}
+
 function ReplyDialog({ sms, onClose, open, onOpenChange }: { sms: any; onClose?: () => void; open: boolean; onOpenChange: (open: boolean) => void }) {
 
   const {
@@ -105,7 +117,7 @@ function ReplyDialog({ sms, onClose, open, onOpenChange }: { sms: any; onClose?:
     isPending: isSendingSms,
     isSuccess: isSendSmsSuccess,
   } = useMutation({
-    mutationKey: ['send-sms'],
+    mutationKey: ['message-reply-sms'],
     mutationFn: (data: SendSmsFormData) =>
       httpBrowserClient.post(ApiEndpoints.gateway.sendSMS(data.deviceId), data),
     onSuccess: () => {
@@ -259,7 +271,7 @@ function FollowUpDialog({ message, onClose, open, onOpenChange }: { message: any
     isPending: isSendingSms,
     isSuccess: isSendSmsSuccess,
   } = useMutation({
-    mutationKey: ['send-sms'],
+    mutationKey: ['message-followup-sms'],
     mutationFn: (data: SendSmsFormData) =>
       httpBrowserClient.post(ApiEndpoints.gateway.sendSMS(data.deviceId), data),
     onSuccess: () => {
@@ -433,6 +445,7 @@ function SmsDetailsDialog({
 
   const statusBadge = getStatusBadge(message?.status)
   const isSent = !!message?.recipient || (message?.recipients && message.recipients.length > 0)
+  const transportInfo = getTransportInfo(message)
 
   const handleCopyMessage = () => {
     if (message?.message) {
@@ -493,6 +506,39 @@ function SmsDetailsDialog({
                   {statusBadge.label}
                 </Badge>
               </div>
+
+              {isSent && transportInfo.requestedChannel && (
+                <>
+                  <div className="font-medium text-muted-foreground">Requested Channel</div>
+                  <div>
+                    <Badge variant="outline" className="text-xs">
+                      {transportInfo.requestedChannel}
+                    </Badge>
+                  </div>
+                </>
+              )}
+
+              {isSent && transportInfo.dispatchChannel && (
+                <>
+                  <div className="font-medium text-muted-foreground">Dispatch Channel</div>
+                  <div>
+                    <Badge variant="outline" className="text-xs">
+                      {transportInfo.dispatchChannel}
+                    </Badge>
+                  </div>
+                </>
+              )}
+
+              {isSent && transportInfo.provider && (
+                <>
+                  <div className="font-medium text-muted-foreground">Provider</div>
+                  <div>
+                    <Badge variant="outline" className="text-xs">
+                      {transportInfo.provider}
+                    </Badge>
+                  </div>
+                </>
+              )}
 
               <div className="font-medium text-muted-foreground">Date & Time</div>
               <div>{formatTimestamp(isSent ? message.requestedAt : message.receivedAt)}</div>
@@ -592,6 +638,7 @@ function MessageCard({ message, type, device, onSelectMessage }) {
     (isSent ? message.requestedAt : message.receivedAt) || message.createdAt
   )
   const statusBadge = getStatusBadge(message.status)
+  const transportInfo = getTransportInfo(message)
 
   // Condition to show status badge based on device app version and message date
   const shouldShowStatus = device?.appVersionCode >= 14 && new Date(message?.createdAt) > new Date('2025-06-05')
@@ -635,12 +682,24 @@ function MessageCard({ message, type, device, onSelectMessage }) {
           </div>
 
           <div className='flex justify-between items-center'>
-            {isSent && shouldShowStatus && (
-              <Badge variant='outline' className={`${statusBadge.color} flex items-center text-xs`}>
-                {statusBadge.icon}
-                {statusBadge.label}
-              </Badge>
-            )}
+            <div className='flex items-center gap-2 flex-wrap'>
+              {isSent && shouldShowStatus && (
+                <Badge variant='outline' className={`${statusBadge.color} flex items-center text-xs`}>
+                  {statusBadge.icon}
+                  {statusBadge.label}
+                </Badge>
+              )}
+              {isSent && transportInfo.dispatchChannel && (
+                <Badge variant='outline' className='text-xs'>
+                  {transportInfo.dispatchChannel}
+                </Badge>
+              )}
+              {isSent && transportInfo.provider && (
+                <Badge variant='outline' className='text-xs'>
+                  provider:{transportInfo.provider}
+                </Badge>
+              )}
+            </div>
           </div>
         </div>
       </CardContent>

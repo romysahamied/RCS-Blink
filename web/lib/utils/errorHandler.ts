@@ -53,10 +53,18 @@ export function formatError(error: unknown): FormattedError {
       }
     }
 
-    // For other HTTP errors, use the message from the response
-    if (data?.message) {
+    // Nest often returns { success: false, error: '...' }; some endpoints use { message: '...' }
+    const fromErrorField = typeof data?.error === 'string' ? data.error : undefined
+    const fromMessageField =
+      typeof data?.message === 'string'
+        ? data.message
+        : Array.isArray(data?.message)
+          ? data.message.join(', ')
+          : undefined
+    const serverMessage = fromErrorField || fromMessageField
+    if (serverMessage) {
       return {
-        message: data.message,
+        message: serverMessage,
         isRateLimit: false,
       }
     }

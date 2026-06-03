@@ -1,2 +1,4 @@
-<resources>
-</resources>
+<resources>
+    <string name="rcs_accessibility_desc">Allows RCS Blink to tap the saved Send position when the messaging composer opens (RCS only).</string>
+    <string name="rcs_tap_target_help">Open RCS Blink and drag the red + onto the Send button in Google Messages (open a sample chat first if needed). Position is saved once. Enable Accessibility and Auto-tap, then send RCS from the web dashboard — composer opens even when RCS Blink is in the background.</string>
+</resources>

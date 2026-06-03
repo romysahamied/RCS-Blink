@@ -47,7 +47,7 @@ export default function SendSms() {
     error: sendSmsError,
     isSuccess: isSendSmsSuccess,
   } = useMutation({
-    mutationKey: ['send-sms'],
+    mutationKey: ['dashboard-send-sms'],
     mutationFn: (data: SendSmsFormData) =>
       httpBrowserClient.post(ApiEndpoints.gateway.sendSMS(data.deviceId), data),
   })
@@ -66,10 +66,11 @@ export default function SendSms() {
         devices?.data?.length === 1 ? devices?.data?.[0]?._id : undefined,
       recipients: [''],
       message: '',
+      channel: 'sms',
     },
   })
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, replace } = useFieldArray({
     control,
     // @ts-expect-error
     name: 'recipients',
@@ -97,15 +98,27 @@ export default function SendSms() {
     }
   }, [selectedDeviceId, setValue])
 
+  const handleRemoveRecipient = (index: number) => {
+    if (fields.length <= 1) {
+      setValue('recipients.0', '', { shouldValidate: true, shouldDirty: true })
+      return
+    }
+    remove(index)
+  }
+
   return (
     <div>
       <Card>
         <CardHeader>
           <div className='flex items-center gap-2'>
             <MessageSquare className='h-5 w-5' />
-            <CardTitle>Send SMS</CardTitle>
+            <CardTitle>Send Message</CardTitle>
           </div>
-          <CardDescription>Send a message to any recipient(s)</CardDescription>
+          <CardDescription>
+            SMS is sent automatically from your gateway device. Choosing RCS opens
+            your default messaging app with the draft filled in—you finish sending
+            there (RCS vs SMS depends on your carrier and app).
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form
@@ -180,6 +193,41 @@ export default function SendSms() {
                 </div>
               )}
 
+              <div>
+                <Controller
+                  name='channel'
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      onValueChange={(value) => {
+                        if (value !== field.value) {
+                          replace([''])
+                          setValue('message', '')
+                        }
+                        field.onChange(value)
+                      }}
+                      value={field.value}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder='Select channel' />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value='sms'>SMS</SelectItem>
+                        <SelectItem value='rcs'>RCS</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                <p className='text-xs text-muted-foreground mt-1'>
+                  <span className='font-medium'>SMS</span> sends through the
+                  gateway app in the background. <span className='font-medium'>
+                    RCS
+                  </span>{' '}
+                  opens the phone&apos;s messaging composer with your text; tap
+                  Send in Messages—RCS is used when your conversation supports it.
+                </p>
+              </div>
+
               <div className='space-y-2'>
                 {fields.map((field, index) => (
                   <div key={field.id}>
@@ -193,8 +241,8 @@ export default function SendSms() {
                         type='button'
                         variant='ghost'
                         size='icon'
-                        onClick={() => remove(index)}
-                        disabled={index === 0 && fields?.length === 1}
+                        onClick={() => handleRemoveRecipient(index)}
+                        aria-label='Remove recipient'
                       >
                         <X className='h-4 w-4' />
                       </Button>
@@ -263,16 +311,20 @@ export default function SendSms() {
 
             {isSendSmsSuccess && (
               <div className='flex items-center gap-2'>
-                <p>SMS sent successfully!</p>
+                <p>Message sent successfully!</p>
                 <Check className='h-5 w-5' />
               </div>
             )}
 
-            <Button type='submit' disabled={isSendingSms} className='w-full'>
+            <Button
+              type='submit'
+              disabled={isSendingSms}
+              className='w-full text-white'
+            >
               {isSendingSms && (
                 <Spinner size='sm' className='mr-2' color='white' />
               )}
-              {isSendingSms ? 'Sending...' : 'Send Message'}
+              {isSendingSms ? 'Sending...' : 'Send'}
             </Button>
           </form>
         </CardContent>

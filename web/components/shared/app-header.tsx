@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
+import BrandLogo from './brand-logo'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -152,18 +152,9 @@ export default function AppHeader({ session }: { session: Session }) {
             className='flex items-center space-x-2'
             href={Routes.landingPage}
           >
-            <Image
-              src='/images/logo.png'
-              alt='textbee Logo'
-              width={24}
-              height={24}
-              className='h-6 w-6 bg-white rounded-full'
-            />
-            <span className='font-bold'>
-              text<span className='text-primary'>bee</span>
-              <span className='text-xs align-center text-gray-500 dark:text-gray-400'>
-                .dev
-              </span>
+            <BrandLogo />
+            <span className='font-bold text-foreground'>
+              RCS <span className='text-primary'>Blink</span>
             </span>
           </Link>
         </div>

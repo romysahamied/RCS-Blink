@@ -3,12 +3,20 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Smartphone, Battery, Signal, Copy, Plus, ExternalLink } from 'lucide-react'
+import {
+  Smartphone,
+  Battery,
+  Signal,
+  Copy,
+  Plus,
+  ExternalLink,
+  Trash2,
+} from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import httpBrowserClient from '@/lib/httpBrowserClient'
 import { ApiEndpoints } from '@/config/api'
 import { Routes } from '@/config/routes'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import {
   Dialog,
@@ -18,6 +26,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { formatError } from '@/lib/utils/errorHandler'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatDeviceName } from '@/lib/utils'
 import GenerateApiKey, {
@@ -34,6 +53,11 @@ export default function DeviceList() {
   const addDeviceKeyRef = useRef<GenerateApiKeyHandle>(null)
   const [addDeviceInstructionOpen, setAddDeviceInstructionOpen] =
     useState(false)
+  const [devicePendingDelete, setDevicePendingDelete] = useState<{
+    _id: string
+    label: string
+  } | null>(null)
+  const queryClient = useQueryClient()
   const { toast } = useToast()
   const {
     isPending,
@@ -46,6 +70,25 @@ export default function DeviceList() {
         .get(ApiEndpoints.gateway.listDevices())
         .then((res) => res.data),
     // select: (res) => res.data,
+  })
+
+  const deleteDeviceMutation = useMutation({
+    mutationKey: ['delete-gateway-device'],
+    mutationFn: (deviceId: string) =>
+      httpBrowserClient.delete(ApiEndpoints.gateway.deleteDevice(deviceId)),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['devices'] })
+      toast({ title: 'Device removed' })
+      setDevicePendingDelete(null)
+    },
+    onError: (err: unknown) => {
+      const { message } = formatError(err)
+      toast({
+        title: 'Could not remove device',
+        description: message,
+        variant: 'destructive',
+      })
+    },
   })
 
   const handleCopyId = (id: string) => {
@@ -113,15 +156,15 @@ export default function DeviceList() {
                 <CardContent className='flex items-center p-3'>
                   <Smartphone className='h-6 w-6 mr-3' />
                   <div className='flex-1'>
-                    <div className='flex items-center justify-between'>
-                      <h3 className='font-semibold text-sm'>
+                    <div className='flex items-center justify-between gap-2'>
+                      <h3 className='font-semibold text-sm truncate'>
                         {formatDeviceName(device)}
                       </h3>
-                      <div className='flex items-center gap-2'>
+                      <div className='flex items-center gap-2 shrink-0'>
                         {isDeviceOutdated(device as DeviceVersionCandidate) && (
                           <Badge
                             variant='outline'
-                            className='border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300'
+                            className='border-purple-300 bg-purple-50 text-purple-700'
                           >
                             Update available
                           </Badge>
@@ -134,6 +177,22 @@ export default function DeviceList() {
                         >
                           {device.enabled ? 'Enabled' : 'Disabled'}
                         </Badge>
+                        <Button
+                          type='button'
+                          variant='ghost'
+                          size='icon'
+                          className='h-8 w-8 text-muted-foreground hover:text-destructive'
+                          title='Remove device'
+                          onClick={() =>
+                            setDevicePendingDelete({
+                              _id: device._id,
+                              label: formatDeviceName(device),
+                            })
+                          }
+                          disabled={deleteDeviceMutation.isPending}
+                        >
+                          <Trash2 className='h-4 w-4' />
+                        </Button>
                       </div>
                     </div>
                     <div className='flex items-center space-x-2 mt-1'>
@@ -203,6 +262,41 @@ export default function DeviceList() {
       </CardContent>
       </Card>
 
+      <AlertDialog
+        open={devicePendingDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setDevicePendingDelete(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove this device?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {devicePendingDelete
+                ? `“${devicePendingDelete.label}” will be unlinked from your account. You can register it again later with a new API key.`
+                : null}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteDeviceMutation.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className='bg-destructive text-destructive-foreground hover:bg-destructive/90'
+              disabled={deleteDeviceMutation.isPending}
+              onClick={(e) => {
+                e.preventDefault()
+                if (devicePendingDelete) {
+                  deleteDeviceMutation.mutate(devicePendingDelete._id)
+                }
+              }}
+            >
+              {deleteDeviceMutation.isPending ? 'Removing…' : 'Remove device'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <Dialog
         open={addDeviceInstructionOpen}
         onOpenChange={setAddDeviceInstructionOpen}
@@ -216,7 +310,7 @@ export default function DeviceList() {
           </DialogHeader>
           <ol className='list-decimal space-y-3 pl-5 text-left text-sm text-muted-foreground'>
             <li>
-              Download textbee app from{' '}
+              Download RCS Blink app from{' '}
               <a
                 href={Routes.downloadAndroidApp}
                 target='_blank'
@@ -233,7 +327,7 @@ export default function DeviceList() {
               app instead
             </li>
             <li>
-              Open the textbee.dev app and scan the QR code or paste the key manually. Your device should appear in the list when the link succeeds.
+              Open the RCS Blink app and scan the QR code or paste the key manually. Your device should appear in the list when the link succeeds.
             </li>
           </ol>
           <DialogFooter className='flex-col gap-2 sm:flex-row sm:justify-between'>

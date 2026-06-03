@@ -135,7 +135,7 @@ export function ContributeModal() {
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className='max-w-md max-h-[90vh] overflow-y-auto flex flex-col'>
           <DialogHeader>
-            <DialogTitle>Support textbee.dev</DialogTitle>
+            <DialogTitle>Support RCS Blink</DialogTitle>
             <DialogDescription>
               Your contribution helps keep this project alive and growing.
             </DialogDescription>

@@ -81,19 +81,22 @@ export default function LoginForm() {
 
     try {
       const result = await signIn('email-password-login', {
-        redirect: true,
+        redirect: false,
         callbackUrl: Routes.dashboard,
         email: data.email,
         password: data.password,
         turnstileToken: data.turnstileToken,
       })
 
-      if (result?.error) {
-        form.setError('root', {
-          type: 'manual',
-          message: 'Invalid email or password',
-        })
+      if (result?.ok && result.url) {
+        router.push(result.url)
+        return
       }
+
+      form.setError('root', {
+        type: 'manual',
+        message: 'Invalid email or password',
+      })
     } catch (error) {
       console.error('login error:', error)
       form.setError('root', {

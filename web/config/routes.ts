@@ -4,6 +4,7 @@ export const Routes = {
   useCases: 'https://textbee.dev/use-cases',
   quickstart: 'https://textbee.dev/quickstart',
   login: '/login',
+  authError: '/auth-error',
   register: '/register',
   logout: '/logout',
   resetPassword: '/reset-password',
