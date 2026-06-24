@@ -165,13 +165,55 @@ public class MessagingComposerHelper {
         SMSDTO smsDTO = new SMSDTO();
         smsDTO.setSmsId(smsId);
         smsDTO.setSmsBatchId(smsBatchId);
+        smsDTO.setStatus("DISPATCHED");
+
+        updateSMSStatus(context, smsDTO);
+    }
+
+    public static void reportRcsSent(Context context, String smsId, String smsBatchId) {
+        if (smsId == null || smsId.trim().isEmpty()) {
+            return;
+        }
+
+        SMSDTO smsDTO = new SMSDTO();
+        smsDTO.setSmsId(smsId);
+        smsDTO.setSmsBatchId(smsBatchId);
         smsDTO.setStatus("SENT");
         smsDTO.setSentAtInMillis(System.currentTimeMillis());
 
         updateSMSStatus(context, smsDTO);
     }
 
-    private static void reportSendingError(
+    public static void reportRcsTimeout(
+            Context context,
+            String smsId,
+            String smsBatchId,
+            String detectionSignals
+    ) {
+        String details = "RCS not confirmed for recipient — message not sent."
+                + (detectionSignals != null && !detectionSignals.isEmpty()
+                        ? " UI signals: " + detectionSignals
+                        : "");
+        reportSendingError(context, smsId, smsBatchId, details);
+    }
+
+    public static void reportRcsUnavailable(Context context, String smsId, String smsBatchId) {
+        if (smsId == null || smsId.trim().isEmpty()) {
+            return;
+        }
+
+        SMSDTO smsDTO = new SMSDTO();
+        smsDTO.setSmsId(smsId);
+        smsDTO.setSmsBatchId(smsBatchId);
+        smsDTO.setStatus("FAILED");
+        smsDTO.setFailedAtInMillis(System.currentTimeMillis());
+        smsDTO.setErrorCode("RCS_NOT_AVAILABLE");
+        smsDTO.setErrorMessage("Recipient does not support RCS on this device");
+
+        updateSMSStatus(context, smsDTO);
+    }
+
+    static void reportSendingError(
             Context context,
             String smsId,
             String smsBatchId,

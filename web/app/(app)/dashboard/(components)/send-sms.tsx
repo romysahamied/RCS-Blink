@@ -81,6 +81,11 @@ export default function SendSms() {
     name: 'deviceId',
   })
 
+  const selectedChannel = useWatch({
+    control,
+    name: 'channel',
+  })
+
   const selectedDevice = devices?.data?.find(
     (device) => device._id === selectedDeviceId
   )
@@ -311,7 +316,11 @@ export default function SendSms() {
 
             {isSendSmsSuccess && (
               <div className='flex items-center gap-2'>
-                <p>Message sent successfully!</p>
+                <p>
+                  {selectedChannel === 'rcs'
+                    ? 'RCS request submitted to your device. Delivery succeeds only if the recipient supports RCS; check message history for the final status.'
+                    : 'Message sent successfully!'}
+                </p>
                 <Check className='h-5 w-5' />
               </div>
             )}

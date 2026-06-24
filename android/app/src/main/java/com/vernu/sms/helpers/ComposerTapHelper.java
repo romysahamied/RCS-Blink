@@ -5,6 +5,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
+import com.vernu.sms.helpers.MessagingComposerHelper;
 import com.vernu.sms.services.RCSAccessibilityService;
 
 import java.util.Arrays;
@@ -24,9 +25,10 @@ public final class ComposerTapHelper {
 
     private static final int DEFAULT_TAP_X = 950;
     private static final int DEFAULT_TAP_Y = 2050;
-    private static final long COMPOSER_CLICK_DELAY_MS = 2600L;
-    private static final long ACCESSIBILITY_CLICK_DELAY_MS = 750L;
-    private static final long AUTO_TAP_SESSION_EXPIRY_MS = 10000L;
+    private static final long INITIAL_CLICK_DELAY_MS = 600L;
+    private static final long ACCESSIBILITY_CLICK_DELAY_MS = 400L;
+    private static final long RETRY_INTERVAL_MS = 300L;
+    private static final long AUTO_TAP_SESSION_EXPIRY_MS = 15000L;
 
     private static final Set<String> MESSAGING_PACKAGES = new HashSet<>(Arrays.asList(
             "com.google.android.apps.messaging",
@@ -38,7 +40,9 @@ public final class ComposerTapHelper {
     private static volatile boolean armed;
     private static volatile boolean awaitingPrefillTap;
     private static volatile String expectedComposeText;
-    private static Runnable scheduledTapRunnable;
+    private static volatile String pendingSmsId;
+    private static volatile String pendingSmsBatchId;
+    private static Runnable pendingAttemptRunnable;
     private static Runnable expiryRunnable;
     private static final Handler handler = new Handler(Looper.getMainLooper());
     private static PositionSavedListener positionSavedListener;
@@ -110,10 +114,18 @@ public final class ComposerTapHelper {
         return expectedComposeText;
     }
 
+    public static String getPendingSmsId() {
+        return pendingSmsId;
+    }
+
+    public static String getPendingSmsBatchId() {
+        return pendingSmsBatchId;
+    }
+
     /**
      * Arm auto-tap only when TextBee launched composer with a message body from the web.
      */
-    public static void armAutoClick(Context context, String messageBody) {
+    public static void armAutoClick(Context context, String messageBody, String smsId, String smsBatchId) {
         if (!isAutoClickEnabled(context)) {
             Log.d(TAG, "Auto-click disabled; not arming");
             return;
@@ -123,23 +135,26 @@ public final class ComposerTapHelper {
             return;
         }
 
-        cancelScheduledTap();
+        cancelPendingAttempt();
         awaitingPrefillTap = true;
         expectedComposeText = messageBody.trim();
+        pendingSmsId = smsId;
+        pendingSmsBatchId = smsBatchId;
         armed = true;
 
         Context appContext = context.getApplicationContext();
-        scheduledTapRunnable = () -> {
-            if (!awaitingPrefillTap || !isAutoClickEnabled(appContext)) {
-                return;
-            }
-            Log.d(TAG, "Auto-click check (timer)");
-            RCSAccessibilityService.tryAutoClickIfComposerPrefilled(appContext);
-        };
-        handler.postDelayed(scheduledTapRunnable, COMPOSER_CLICK_DELAY_MS);
+        scheduleAutoClickAttempt(appContext, INITIAL_CLICK_DELAY_MS);
 
         expiryRunnable = () -> {
             Log.d(TAG, "Auto-tap session expired");
+            if (awaitingPrefillTap && pendingSmsId != null) {
+                MessagingComposerHelper.reportRcsTimeout(
+                        appContext,
+                        pendingSmsId,
+                        pendingSmsBatchId,
+                        RCSAccessibilityService.getLastSignalsSummary()
+                );
+            }
             clearAutoTapSession();
         };
         handler.postDelayed(expiryRunnable, AUTO_TAP_SESSION_EXPIRY_MS);
@@ -147,39 +162,61 @@ public final class ComposerTapHelper {
         Log.d(TAG, "Armed auto-tap for prefilled message");
     }
 
+    public static void armAutoClick(Context context, String messageBody) {
+        armAutoClick(context, messageBody, null, null);
+    }
+
     public static void armAutoClick(Context context) {
-        armAutoClick(context, null);
+        armAutoClick(context, null, null, null);
     }
 
     public static void onMessagingWindowOpened(Context context) {
         if (!awaitingPrefillTap || !isAutoClickEnabled(context)) {
             return;
         }
+        if (pendingAttemptRunnable != null) {
+            return;
+        }
+        Log.d(TAG, "Messaging window opened — scheduling auto-click attempt");
+        scheduleAutoClickAttempt(context.getApplicationContext(), ACCESSIBILITY_CLICK_DELAY_MS);
+    }
+
+    private static void scheduleAutoClickAttempt(Context context, long delayMs) {
+        cancelPendingAttempt();
         Context appContext = context.getApplicationContext();
-        handler.postDelayed(() -> {
-            if (!awaitingPrefillTap || !isAutoClickEnabled(appContext)) {
-                return;
-            }
-            Log.d(TAG, "Auto-click check (accessibility)");
-            RCSAccessibilityService.tryAutoClickIfComposerPrefilled(appContext);
-        }, ACCESSIBILITY_CLICK_DELAY_MS);
+        pendingAttemptRunnable = () -> runAutoClickAttempt(appContext);
+        handler.postDelayed(pendingAttemptRunnable, delayMs);
+    }
+
+    private static void runAutoClickAttempt(Context context) {
+        if (!awaitingPrefillTap || !isAutoClickEnabled(context)) {
+            return;
+        }
+        Log.d(TAG, "Auto-click attempt");
+        RCSAccessibilityService.AutoClickResult result =
+                RCSAccessibilityService.tryAutoClickIfComposerPrefilled(context);
+        if (result == RCSAccessibilityService.AutoClickResult.RETRY && awaitingPrefillTap) {
+            scheduleAutoClickAttempt(context, RETRY_INTERVAL_MS);
+        }
     }
 
     public static void clearAutoTapSession() {
         awaitingPrefillTap = false;
         expectedComposeText = null;
+        pendingSmsId = null;
+        pendingSmsBatchId = null;
         armed = false;
-        cancelScheduledTap();
+        cancelPendingAttempt();
         if (expiryRunnable != null) {
             handler.removeCallbacks(expiryRunnable);
             expiryRunnable = null;
         }
     }
 
-    private static void cancelScheduledTap() {
-        if (scheduledTapRunnable != null) {
-            handler.removeCallbacks(scheduledTapRunnable);
-            scheduledTapRunnable = null;
+    private static void cancelPendingAttempt() {
+        if (pendingAttemptRunnable != null) {
+            handler.removeCallbacks(pendingAttemptRunnable);
+            pendingAttemptRunnable = null;
         }
     }
 

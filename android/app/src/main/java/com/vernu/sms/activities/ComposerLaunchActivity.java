@@ -63,7 +63,7 @@ public class ComposerLaunchActivity extends Activity {
         boolean opened = MessagingComposerHelper.launchComposerFromForeground(
                 this, phone, message, smsId, smsBatchId);
         if (opened) {
-            ComposerTapHelper.armAutoClick(getApplicationContext(), message);
+            ComposerTapHelper.armAutoClick(getApplicationContext(), message, smsId, smsBatchId);
             Log.d(TAG, "Composer launched for " + phone);
         } else {
             Log.e(TAG, "Composer launch failed for " + phone);

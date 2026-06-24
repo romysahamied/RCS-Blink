@@ -1,4 +1,5 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common'
+import { EventEmitter2 } from '@nestjs/event-emitter'
 import { InjectModel } from '@nestjs/mongoose'
 import { Device, DeviceDocument } from './schemas/device.schema'
 import { Model, Types } from 'mongoose'
@@ -43,6 +44,7 @@ export class GatewayService {
     private billingService: BillingService,
     private smsQueueService: SmsQueueService,
     private rcsProviderService: RcsProviderService,
+    private eventEmitter: EventEmitter2,
   ) {}
 
   async registerDevice(
@@ -485,6 +487,7 @@ export class GatewayService {
           message: 'SMS added to queue for processing',
           smsBatchId: smsBatch._id,
           recipientCount: recipients.length,
+          channel,
         }
       } catch (e) {
         console.warn(
@@ -502,6 +505,7 @@ export class GatewayService {
           : 'SMS queued for device pull (dev fallback, Firebase disabled)',
         smsBatchId: smsBatch._id,
         recipientCount: recipients.length,
+        channel,
       }
     }
 
@@ -554,7 +558,14 @@ export class GatewayService {
           console.error('failed to update sms batch status to completed')
         })
 
-      return response
+      return {
+        success: true,
+        message: 'Message dispatched to device',
+        smsBatchId: smsBatch._id,
+        recipientCount: recipients.length,
+        channel,
+        fcmSuccessCount: response.successCount,
+      }
     } catch (e) {
       // If Firebase push fails (e.g., stale/invalid token), keep delivery working by
       // falling back to device pull transport instead of returning an error to web.
@@ -1227,6 +1238,12 @@ const updatedSms = await this.smsModel.findByIdAndUpdate(
       });
     } catch (error) {
       console.error('Failed to trigger webhook event:', error);
+    }
+
+    try {
+      this.eventEmitter.emit('sms.status.updated', updatedSms)
+    } catch (error) {
+      console.error('Failed to emit sms.status.updated:', error)
     }
     
     return {

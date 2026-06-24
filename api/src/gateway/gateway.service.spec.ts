@@ -21,6 +21,7 @@ import { User } from '../users/schemas/user.schema'
 import { BatchResponse } from 'firebase-admin/messaging'
 import { RcsProviderService } from './transport/rcs-provider.service'
 import { MessageChannel } from './message-channel.enum'
+import { EventEmitter2 } from '@nestjs/event-emitter'
 
 // Mock firebase-admin — non-empty apps[] so sendSMS takes FCM path (not dev pull fallback)
 jest.mock('firebase-admin', () => ({
@@ -149,6 +150,10 @@ describe('GatewayService', () => {
         {
           provide: RcsProviderService,
           useValue: mockRcsProviderService,
+        },
+        {
+          provide: EventEmitter2,
+          useValue: { emit: jest.fn() },
         },
       ],
       imports: [ConfigModule],
@@ -431,7 +436,14 @@ describe('GatewayService', () => {
       expect(mockSmsBatchModel.create).toHaveBeenCalled()
       expect(mockSmsModel.create).toHaveBeenCalled()
       expect(firebaseAdmin.messaging().sendEach).toHaveBeenCalled()
-      expect(result).toEqual(mockFcmResponse)
+      expect(result).toEqual({
+        success: true,
+        message: 'Message dispatched to device',
+        smsBatchId: mockSmsBatch._id,
+        recipientCount: mockSmsInput.recipients.length,
+        channel: MessageChannel.SMS,
+        fcmSuccessCount: mockFcmResponse.successCount,
+      })
     })
 
     it('should throw error if device is not enabled', async () => {
@@ -479,7 +491,14 @@ describe('GatewayService', () => {
 
       expect(mockSmsQueueService.addSendSmsJob).toHaveBeenCalled()
       expect(firebaseAdmin.messaging().sendEach).toHaveBeenCalled()
-      expect(result).toEqual(mockFcmResponse)
+      expect(result).toEqual({
+        success: true,
+        message: 'Message dispatched to device',
+        smsBatchId: mockSmsBatch._id,
+        recipientCount: mockSmsInput.recipients.length,
+        channel: MessageChannel.SMS,
+        fcmSuccessCount: mockFcmResponse.successCount,
+      })
     })
   })
 

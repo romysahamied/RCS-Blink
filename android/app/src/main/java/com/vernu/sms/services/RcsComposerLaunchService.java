@@ -107,7 +107,12 @@ public class RcsComposerLaunchService extends Service {
                 }
             }
             if (opened) {
-                ComposerTapHelper.armAutoClick(getApplicationContext(), message);
+                ComposerTapHelper.armAutoClick(
+                        getApplicationContext(),
+                        message,
+                        smsId,
+                        smsBatchId
+                );
             }
             mainHandler.postDelayed(this::stopIfIdle, 400);
         });

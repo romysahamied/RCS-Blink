@@ -1,0 +1,15 @@
+{
+  "extends": "../api/tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": "../api/src",
+    "noEmit": true,
+    "typeRoots": ["../api/node_modules/@types"],
+    "paths": {
+      "@nestjs/*": ["../api/node_modules/@nestjs/*"],
+      "mongoose": ["../api/node_modules/mongoose"],
+      "axios": ["../api/node_modules/axios"],
+      "bcryptjs": ["../api/node_modules/bcryptjs"]
+    }
+  },
+  "include": ["platform-integration/**/*.ts"]
+}
