@@ -42,6 +42,10 @@ interface Release {
   }>
   prerelease: boolean
 }
+
+const GITHUB_REPO =
+  process.env.NEXT_PUBLIC_ANDROID_GITHUB_REPO?.trim() || 'romysahamied/RCS-Blink'
+
 export default function DownloadPage() {
   const [releases, setReleases] = useState<Release[]>([])
   const [loading, setLoading] = useState(true)
@@ -50,7 +54,7 @@ export default function DownloadPage() {
     async function fetchReleases() {
       try {
         const response = await fetch(
-          'https://api.github.com/repos/vernu/textbee/releases'
+          `https://api.github.com/repos/${GITHUB_REPO}/releases`
         )
         if (!response.ok) {
           throw new Error('Failed to fetch releases')
@@ -135,14 +139,14 @@ export default function DownloadPage() {
       <div className='container mx-auto max-w-5xl'>
         <div className='text-center mb-12'>
           <div className='inline-flex items-center rounded-full border px-3 py-1 text-sm bg-brand-50 dark:bg-brand-950 border-brand-200 dark:border-brand-800 text-brand-700 dark:text-brand-300 mb-4'>
-            <Download className='h-3.5 w-3.5 mr-2' /> Download TextBee
+            <Download className='h-3.5 w-3.5 mr-2' /> Download RCS Blink
           </div>
           <h1 className='text-4xl font-bold tracking-tight text-gray-900 dark:text-white'>
-            Download TextBee App
+            Download RCS Blink App
           </h1>
           <p className='mt-4 text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto'>
-            Transform your Android device into a powerful SMS gateway with our
-            easy-to-use application.
+            Install the RCS Blink Android gateway app to connect your phone to
+            this dashboard.
           </p>
         </div>
 
@@ -170,11 +174,11 @@ export default function DownloadPage() {
                     <Skeleton className='h-8 w-48' />
                   ) : error ? (
                     <h2 className='text-2xl font-bold text-gray-900 dark:text-white'>
-                      TextBee App
+                      RCS Blink App
                     </h2>
                   ) : (
                     <h2 className='text-2xl font-bold text-gray-900 dark:text-white'>
-                      {latestRelease?.name || 'TextBee App'}
+                      {latestRelease?.name || 'RCS Blink App'}
                     </h2>
                   )}
                 </div>
@@ -199,7 +203,23 @@ export default function DownloadPage() {
                     </Link>
                   </Button>
                 ) : (
-                  <Button disabled>No Downloads Available</Button>
+                  <div className='space-y-2 text-sm text-muted-foreground'>
+                    <p>No RCS Blink APK published yet.</p>
+                    <p>
+                      Publish a release with an APK on{' '}
+                      <Link
+                        href={`https://github.com/${GITHUB_REPO}/releases`}
+                        className='text-primary underline'
+                        target='_blank'
+                        rel='noopener noreferrer'
+                      >
+                        GitHub Releases
+                      </Link>
+                      , or set{' '}
+                      <code className='text-xs'>NEXT_PUBLIC_ANDROID_APP_DOWNLOAD_URL</code>{' '}
+                      in web env to a direct APK link.
+                    </p>
+                  </div>
                 )}
               </div>
 
@@ -318,7 +338,7 @@ export default function DownloadPage() {
               className='text-gray-600 dark:text-gray-400'
             >
               <Link
-                href='https://github.com/vernu/textbee/releases'
+                href={`https://github.com/${GITHUB_REPO}/releases`}
                 target='_blank'
                 rel='noopener noreferrer'
               >

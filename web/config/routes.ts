@@ -12,7 +12,8 @@ export const Routes = {
 
   dashboard: '/dashboard',
 
-  downloadAndroidApp: 'https://textbee.dev/download',
+  downloadAndroidApp:
+    process.env.NEXT_PUBLIC_ANDROID_APP_DOWNLOAD_URL?.trim() || '/download',
   privacyPolicy: 'https://textbee.dev/privacy-policy',
   refundPolicy: 'https://textbee.dev/refund-policy',
   termsOfService: 'https://textbee.dev/terms-of-service',
