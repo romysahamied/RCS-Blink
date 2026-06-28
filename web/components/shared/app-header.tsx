@@ -14,9 +14,10 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
-import { Menu, LogOut, LayoutDashboard, MessageSquarePlus } from 'lucide-react'
+import { Menu, LogOut, LayoutDashboard, MessageSquarePlus, Download } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import { Routes } from '@/config/routes'
+import { HOSTED_APK_FILENAME } from '@/config/android-download'
 import ThemeToggle from './theme-toggle'
 import { Session } from 'next-auth'
 
@@ -116,6 +117,14 @@ export default function AppHeader({ session }: { session: Session }) {
                 <MessageSquarePlus className='h-4 w-4' />
                 Contribute
               </Link>
+              <a
+                href={Routes.downloadAndroidApp}
+                download={HOSTED_APK_FILENAME}
+                className='flex items-center gap-2 py-2'
+              >
+                <Download className='h-4 w-4' />
+                Download App
+              </a>
               <Button
                 onClick={handleLogout}
                 variant='ghost'
@@ -156,6 +165,14 @@ export default function AppHeader({ session }: { session: Session }) {
         <div className='flex flex-1 items-center justify-end space-x-2'>
           <nav className='flex items-center space-x-6'>
             <ThemeToggle />
+            {isAuthenticated ? (
+              <Button asChild size='sm' variant='outline' className='hidden md:inline-flex'>
+                <a href={Routes.downloadAndroidApp} download={HOSTED_APK_FILENAME}>
+                  <Download className='mr-2 h-4 w-4' />
+                  Download App
+                </a>
+              </Button>
+            ) : null}
             <Link
               href={Routes.contribute}
               className='items-center gap-2 pr-8 hidden md:block'

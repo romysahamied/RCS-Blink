@@ -7,6 +7,7 @@ import AccountDeletionAlert from './(components)/account-deletion-alert'
 import UpgradeToProAlert from './(components)/upgrade-to-pro-alert'
 import UpdateAppModal from './(components)/update-app-modal'
 import UpdateAppNotificationBar from './(components)/update-app-notification-bar'
+import DownloadAppBanner from './(components)/download-app-banner'
 import VerifyEmailAlert from './(components)/verify-email-alert'
 import { SurveyModal } from '@/components/shared/survey-modal'
 
@@ -52,6 +53,7 @@ export default function DashboardLayout({
       {/* Main content with left padding to account for fixed sidebar */}
       <main className='flex-1 min-w-0 overflow-auto md:ml-24'>
         <div className='space-y-2 p-4'>
+          <DownloadAppBanner />
           <UpdateAppNotificationBar />
           <VerifyEmailAlert />
           <AccountDeletionAlert />
