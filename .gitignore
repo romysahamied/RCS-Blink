@@ -19,3 +19,4 @@ android/gradle-7.2-bin.zip
 gradle-7.2/
 android/.gradle/
 android/app/build/
+web/public/downloads/*.apk

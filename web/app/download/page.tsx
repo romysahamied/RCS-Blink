@@ -25,6 +25,10 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  getConfiguredApkDownloadUrl,
+  HOSTED_APK_FILENAME,
+} from '@/config/android-download'
 
 interface Release {
   id: number
@@ -49,7 +53,13 @@ const GITHUB_REPO =
 export default function DownloadPage() {
   const [releases, setReleases] = useState<Release[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [githubError, setGithubError] = useState<string | null>(null)
+  const [hostedApkUrl, setHostedApkUrl] = useState<string | null>(null)
+  const [hostedApkSize, setHostedApkSize] = useState<number | null>(null)
+  const [checkingHostedApk, setCheckingHostedApk] = useState(true)
+
+  const configuredApkUrl = getConfiguredApkDownloadUrl()
+
   useEffect(() => {
     async function fetchReleases() {
       try {
@@ -60,20 +70,75 @@ export default function DownloadPage() {
           throw new Error('Failed to fetch releases')
         }
         const data = await response.json()
-        setReleases(data)
+        setReleases(Array.isArray(data) ? data : [])
       } catch (err) {
-        setError('Failed to load releases. Please try again later.')
+        setGithubError('Could not load GitHub releases.')
         console.error(err)
       } finally {
         setLoading(false)
       }
     }
 
+    async function checkHostedApk() {
+      try {
+        const response = await fetch(configuredApkUrl, { method: 'HEAD' })
+        if (response.ok) {
+          setHostedApkUrl(configuredApkUrl)
+          const length = response.headers.get('content-length')
+          if (length) {
+            setHostedApkSize(Number(length))
+          }
+        }
+      } catch (err) {
+        console.error('Hosted APK check failed:', err)
+      } finally {
+        setCheckingHostedApk(false)
+      }
+    }
+
     fetchReleases()
-  }, [])
+    checkHostedApk()
+  }, [configuredApkUrl])
 
   // Get the latest stable release (not prerelease)
   const latestRelease = releases.find((release) => !release.prerelease)
+  const githubDownloadUrl = latestRelease?.assets?.[0]?.browser_download_url
+  const primaryDownloadUrl = githubDownloadUrl || hostedApkUrl
+  const primaryDownloadSize =
+    latestRelease?.assets?.[0]?.size ?? hostedApkSize ?? null
+  const pageLoading = loading || checkingHostedApk
+
+  const renderDownloadButton = () => {
+    if (pageLoading) {
+      return <Skeleton className='h-10 w-36' />
+    }
+
+    if (primaryDownloadUrl) {
+      return (
+        <Button
+          size='lg'
+          className='bg-brand-600 hover:bg-brand-700 text-white'
+          asChild
+        >
+          <a href={primaryDownloadUrl} download={HOSTED_APK_FILENAME}>
+            <ArrowDownToLine className='mr-2 h-5 w-5' />
+            Download APK
+          </a>
+        </Button>
+      )
+    }
+
+    return (
+      <div className='space-y-2 text-sm text-muted-foreground max-w-md'>
+        <p>APK is not on the server yet.</p>
+        <p>
+          Upload <code className='text-xs'>{HOSTED_APK_FILENAME}</code> to{' '}
+          <code className='text-xs'>web/public/downloads/</code> on the server,
+          then refresh this page.
+        </p>
+      </div>
+    )
+  }
 
   // Format date
   const formatDate = (dateString: string) => {
@@ -170,67 +235,24 @@ export default function DownloadPage() {
                     )}
                   </div>
 
-                  {loading ? (
+                  {pageLoading ? (
                     <Skeleton className='h-8 w-48' />
-                  ) : error ? (
-                    <h2 className='text-2xl font-bold text-gray-900 dark:text-white'>
-                      RCS Blink App
-                    </h2>
                   ) : (
                     <h2 className='text-2xl font-bold text-gray-900 dark:text-white'>
-                      {latestRelease?.name || 'RCS Blink App'}
+                      {latestRelease?.name || 'RCS Blink (Dev)'}
                     </h2>
                   )}
                 </div>
 
-                {loading ? (
-                  <Skeleton className='h-10 w-36' />
-                ) : error ? (
-                  <Button disabled>Download Unavailable</Button>
-                ) : latestRelease?.assets?.length ? (
-                  <Button
-                    size='lg'
-                    className='bg-brand-600 hover:bg-brand-700 text-white'
-                    asChild
-                  >
-                    <Link
-                      href={latestRelease.assets[0].browser_download_url}
-                      target='_blank'
-                      rel='noopener noreferrer'
-                    >
-                      <ArrowDownToLine className='mr-2 h-5 w-5' />
-                      Download Now
-                    </Link>
-                  </Button>
-                ) : (
-                  <div className='space-y-2 text-sm text-muted-foreground'>
-                    <p>No RCS Blink APK published yet.</p>
-                    <p>
-                      Publish a release with an APK on{' '}
-                      <Link
-                        href={`https://github.com/${GITHUB_REPO}/releases`}
-                        className='text-primary underline'
-                        target='_blank'
-                        rel='noopener noreferrer'
-                      >
-                        GitHub Releases
-                      </Link>
-                      , or set{' '}
-                      <code className='text-xs'>NEXT_PUBLIC_ANDROID_APP_DOWNLOAD_URL</code>{' '}
-                      in web env to a direct APK link.
-                    </p>
-                  </div>
-                )}
+                {renderDownloadButton()}
               </div>
 
-              {loading ? (
+              {pageLoading ? (
                 <div className='space-y-4'>
                   <Skeleton className='h-4 w-full' />
                   <Skeleton className='h-4 w-full' />
                   <Skeleton className='h-4 w-3/4' />
                 </div>
-              ) : error ? (
-                <div className='text-red-500 dark:text-red-400'>{error}</div>
               ) : latestRelease ? (
                 <>
                   <div className='flex flex-wrap gap-4 mb-6 text-sm text-gray-600 dark:text-gray-400'>
@@ -316,9 +338,33 @@ export default function DownloadPage() {
                     </div>
                   </div>
                 </>
+              ) : hostedApkUrl ? (
+                <div className='space-y-4'>
+                  <div className='flex flex-wrap gap-4 mb-2 text-sm text-gray-600 dark:text-gray-400'>
+                    {hostedApkSize ? (
+                      <div className='flex items-center'>
+                        <FileDown className='h-4 w-4 mr-1' />
+                        <span>Size: {formatFileSize(hostedApkSize)}</span>
+                      </div>
+                    ) : null}
+                    <div className='flex items-center'>
+                      <Info className='h-4 w-4 mr-1' />
+                      <span>Package: com.vernu.sms.dev</span>
+                    </div>
+                  </div>
+                  <p className='text-gray-600 dark:text-gray-400'>
+                    Connects to this RCS Blink server. After install, register
+                    your device from the dashboard and turn Gateway on.
+                  </p>
+                  {githubError ? (
+                    <p className='text-sm text-amber-600 dark:text-amber-400'>
+                      {githubError} Using the APK hosted on this server.
+                    </p>
+                  ) : null}
+                </div>
               ) : (
                 <div className='text-gray-600 dark:text-gray-400'>
-                  No releases available at this time.
+                  {githubError || 'No releases available at this time.'}
                 </div>
               )}
             </div>
@@ -361,18 +407,17 @@ export default function DownloadPage() {
                 </div>
               ))}
             </div>
-          ) : error ? (
-            <div className='bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6'>
-              <div className='text-red-500 dark:text-red-400'>{error}</div>
-            </div>
           ) : releases.length === 0 ? (
             <div className='bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 text-center'>
               <PackageOpen className='h-12 w-12 mx-auto text-gray-400 mb-4' />
               <h3 className='text-lg font-medium text-gray-900 dark:text-white mb-2'>
-                No Releases Found
+                {hostedApkUrl ? 'Using hosted APK' : 'No GitHub Releases Found'}
               </h3>
               <p className='text-gray-600 dark:text-gray-400'>
-                There are no releases available at this time.
+                {hostedApkUrl
+                  ? 'Download the latest build using the button above.'
+                  : githubError ||
+                    'Upload the APK to web/public/downloads/ on the server.'}
               </p>
             </div>
           ) : (
