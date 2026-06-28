@@ -8,7 +8,6 @@ import { useSession } from 'next-auth/react'
 import { HomeIcon, Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Routes } from '@/config/routes'
-import { HOSTED_APK_FILENAME } from '@/config/android-download'
 
 export default function DashboardPage() {
   const { data: session } = useSession()
@@ -22,7 +21,7 @@ export default function DashboardPage() {
             <h2 className='text-3xl font-bold tracking-tight'>Dashboard</h2>
           </div>
           <Button variant='outline' size='sm' asChild>
-            <a href={Routes.downloadAndroidApp} download={HOSTED_APK_FILENAME}>
+            <a href={Routes.downloadAndroidApp}>
               <Download className='mr-2 h-4 w-4' />
               Download App
             </a>

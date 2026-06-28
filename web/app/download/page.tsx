@@ -27,7 +27,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   getApkDownloadUrlWithCacheBust,
-  getConfiguredApkDownloadUrl,
+  APK_DOWNLOAD_API_PATH,
   HOSTED_APK_FILENAME,
 } from '@/config/android-download'
 
@@ -60,7 +60,7 @@ export default function DownloadPage() {
   const [checkingHostedApk, setCheckingHostedApk] = useState(true)
 
   const configuredApkUrl = getApkDownloadUrlWithCacheBust()
-  const hostedApkCheckUrl = getConfiguredApkDownloadUrl()
+  const hostedApkCheckUrl = APK_DOWNLOAD_API_PATH
 
   useEffect(() => {
     async function fetchReleases() {

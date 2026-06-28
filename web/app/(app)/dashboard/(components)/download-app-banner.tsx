@@ -3,7 +3,6 @@
 import { Download, Smartphone } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { HOSTED_APK_FILENAME } from '@/config/android-download'
 import { Routes } from '@/config/routes'
 import { latestAppVersionCode } from './update-app-helpers'
 
@@ -20,7 +19,7 @@ export default function DownloadAppBanner() {
           </span>
         </div>
         <Button asChild size='sm' className='w-full shrink-0 sm:w-auto'>
-          <a href={Routes.downloadAndroidApp} download={HOSTED_APK_FILENAME}>
+          <a href={Routes.downloadAndroidApp}>
             <Download className='mr-2 h-4 w-4' />
             Download App
           </a>

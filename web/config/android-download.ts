@@ -1,6 +1,9 @@
 /** Default APK served from web/public/downloads/ (upload after build). */
 export const DEFAULT_HOSTED_APK_PATH = '/downloads/rcs-blink-dev.apk'
 
+/** Reliable download endpoint (serves local APK or redirects to GitHub). */
+export const APK_DOWNLOAD_API_PATH = '/api/download/android-apk'
+
 export const HOSTED_APK_FILENAME = 'rcs-blink-dev.apk'
 
 function getApkVersionCacheBust(): string | null {
@@ -8,7 +11,7 @@ function getApkVersionCacheBust(): string | null {
   return version && version.length > 0 ? version : null
 }
 
-/** Base APK path/URL without cache-busting query params. */
+/** Legacy static path — prefer APK_DOWNLOAD_API_PATH for downloads. */
 export function getConfiguredApkDownloadUrl(): string {
   return (
     process.env.NEXT_PUBLIC_ANDROID_APP_DOWNLOAD_URL?.trim() ||
@@ -16,9 +19,9 @@ export function getConfiguredApkDownloadUrl(): string {
   )
 }
 
-/** APK URL for dashboard links — appends ?v=version so browsers fetch fresh builds. */
+/** APK URL for dashboard links — uses API route with cache-busting version param. */
 export function getApkDownloadUrlWithCacheBust(): string {
-  const base = getConfiguredApkDownloadUrl()
+  const base = APK_DOWNLOAD_API_PATH
   const version = getApkVersionCacheBust()
   if (!version) {
     return base

@@ -35,6 +35,15 @@ const nextConfig = {
       },
     ]
   },
+
+  async rewrites() {
+    return [
+      {
+        source: '/downloads/rcs-blink-dev.apk',
+        destination: '/api/download/android-apk',
+      },
+    ]
+  },
 }
 
 

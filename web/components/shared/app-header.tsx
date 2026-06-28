@@ -17,7 +17,6 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Menu, LogOut, LayoutDashboard, MessageSquarePlus, Download } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import { Routes } from '@/config/routes'
-import { HOSTED_APK_FILENAME } from '@/config/android-download'
 import ThemeToggle from './theme-toggle'
 import { Session } from 'next-auth'
 
@@ -117,11 +116,7 @@ export default function AppHeader({ session }: { session: Session }) {
                 <MessageSquarePlus className='h-4 w-4' />
                 Contribute
               </Link>
-              <a
-                href={Routes.downloadAndroidApp}
-                download={HOSTED_APK_FILENAME}
-                className='flex items-center gap-2 py-2'
-              >
+              <a href={Routes.downloadAndroidApp} className='flex items-center gap-2 py-2'>
                 <Download className='h-4 w-4' />
                 Download App
               </a>
@@ -167,7 +162,7 @@ export default function AppHeader({ session }: { session: Session }) {
             <ThemeToggle />
             {isAuthenticated ? (
               <Button asChild size='sm' variant='outline' className='hidden md:inline-flex'>
-                <a href={Routes.downloadAndroidApp} download={HOSTED_APK_FILENAME}>
+                <a href={Routes.downloadAndroidApp}>
                   <Download className='mr-2 h-4 w-4' />
                   Download App
                 </a>
