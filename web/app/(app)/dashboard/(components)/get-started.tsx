@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/dialog'
 import { ApiEndpoints } from '@/config/api'
 import { Routes } from '@/config/routes'
+import { HOSTED_APK_FILENAME } from '@/config/android-download'
 import httpBrowserClient from '@/lib/httpBrowserClient'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
@@ -399,15 +400,14 @@ export default function GetStartedCard() {
                           )}
                           {step.id === 'download_app' && (
                             <>
-                              <Button
-                                variant='outline'
-                                size='sm'
-                                onClick={() =>
-                                  window.open(Routes.downloadAndroidApp, '_blank')
-                                }
-                              >
-                                <Download className='h-4 w-4' />
-                                Download APK
+                              <Button variant='outline' size='sm' asChild>
+                                <a
+                                  href={Routes.downloadAndroidApp}
+                                  download={HOSTED_APK_FILENAME}
+                                >
+                                  <Download className='h-4 w-4' />
+                                  Download APK
+                                </a>
                               </Button>
                               <Button
                                 variant='link'
@@ -570,16 +570,15 @@ export default function GetStartedCard() {
               Generate an API key in the step above (if you have not already).
             </li>
             <li>
-              Download the RCS Blink Android app from{' '}
+              Download the RCS Blink Android app (
               <a
                 href={Routes.downloadAndroidApp}
-                target='_blank'
-                rel='noreferrer'
+                download={HOSTED_APK_FILENAME}
                 className='font-medium text-primary underline-offset-4 hover:underline'
               >
-                {Routes.downloadAndroidApp}
+                direct APK download
               </a>
-              .
+              ).
             </li>
             <li>Open the app and grant SMS permissions when prompted.</li>
             <li>

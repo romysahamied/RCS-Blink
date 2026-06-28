@@ -1,3 +1,5 @@
+import { getConfiguredApkDownloadUrl } from './android-download'
+
 export const Routes = {
   landingPage: 'https://textbee.dev',
   contribute: '/contribute',
@@ -12,8 +14,7 @@ export const Routes = {
 
   dashboard: '/dashboard',
 
-  downloadAndroidApp:
-    process.env.NEXT_PUBLIC_ANDROID_APP_DOWNLOAD_URL?.trim() || '/download',
+  downloadAndroidApp: getConfiguredApkDownloadUrl(),
   privacyPolicy: 'https://textbee.dev/privacy-policy',
   refundPolicy: 'https://textbee.dev/refund-policy',
   termsOfService: 'https://textbee.dev/terms-of-service',

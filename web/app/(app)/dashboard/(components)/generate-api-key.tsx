@@ -9,6 +9,7 @@ import {
 import { Spinner } from '@/components/ui/spinner'
 import { ApiEndpoints } from '@/config/api'
 import { Routes } from '@/config/routes'
+import { HOSTED_APK_FILENAME } from '@/config/android-download'
 import { useToast } from '@/hooks/use-toast'
 import httpBrowserClient from '@/lib/httpBrowserClient'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -160,16 +161,15 @@ const GenerateApiKey = forwardRef<GenerateApiKeyHandle, GenerateApiKeyProps>(
                     Don&apos;t have the app?
                   </h4>
                   <p className='text-muted-foreground'>
-                    Download the APK from{' '}
+                    Download the APK (
                     <a
                       href={Routes.downloadAndroidApp}
-                      target='_blank'
-                      rel='noopener noreferrer'
+                      download={HOSTED_APK_FILENAME}
                       className='text-primary hover:underline'
                     >
-                      {Routes.downloadAndroidApp}
-                    </a>{' '}
-                    and install it.
+                      direct download
+                    </a>
+                    ) and install it.
                   </p>
                 </div>
 

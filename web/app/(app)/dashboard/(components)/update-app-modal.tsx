@@ -15,6 +15,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { ApiEndpoints } from '@/config/api'
 import { Routes } from '@/config/routes'
+import { HOSTED_APK_FILENAME } from '@/config/android-download'
 import httpBrowserClient from '@/lib/httpBrowserClient'
 import { formatDeviceName } from '@/lib/utils'
 import {
@@ -131,7 +132,9 @@ export default function UpdateAppModal() {
 
         <DialogFooter className='flex-col gap-2 sm:flex-col'>
           <Button asChild className='w-full'>
-            <Link href={Routes.downloadAndroidApp}>Update now</Link>
+            <a href={Routes.downloadAndroidApp} download={HOSTED_APK_FILENAME}>
+              Download update
+            </a>
           </Button>
           <div className='flex w-full items-center justify-between gap-2'>
             <Button

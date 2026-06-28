@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { ApiEndpoints } from '@/config/api'
 import { Routes } from '@/config/routes'
+import { HOSTED_APK_FILENAME } from '@/config/android-download'
 import httpBrowserClient from '@/lib/httpBrowserClient'
 import { formatDeviceName } from '@/lib/utils'
 import {
@@ -53,10 +54,10 @@ export default function UpdateAppNotificationBar() {
           reliability, bug fixes, and more.
         </div>
         <Button asChild size='sm' className='w-full md:w-auto shrink-0'>
-          <Link href={Routes.downloadAndroidApp}>
+          <a href={Routes.downloadAndroidApp} download={HOSTED_APK_FILENAME}>
             Update app
             <ArrowUpRight className='ml-1 h-4 w-4' />
-          </Link>
+          </a>
         </Button>
       </AlertDescription>
     </Alert>
