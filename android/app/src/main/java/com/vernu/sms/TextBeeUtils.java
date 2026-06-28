@@ -39,35 +39,48 @@ public class TextBeeUtils {
 
     }
 
-    public static void startStickyNotificationService(Context context) {
-        if(!isPermissionGranted(context, Manifest.permission.RECEIVE_SMS)){
-            return;
-        }
-        
-        // Only start service if user has enabled sticky notification
-        boolean stickyNotificationEnabled = SharedPreferenceHelper.getSharedPreferenceBoolean(
+    public static boolean isGatewayEnabled(Context context) {
+        return SharedPreferenceHelper.getSharedPreferenceBoolean(
                 context,
-                AppConstants.SHARED_PREFS_STICKY_NOTIFICATION_ENABLED_KEY,
+                AppConstants.SHARED_PREFS_GATEWAY_ENABLED_KEY,
                 false
         );
-        
-        if (stickyNotificationEnabled) {
-            Intent notificationIntent = new Intent(context, StickyNotificationService.class);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(notificationIntent);
-            } else {
-                context.startService(notificationIntent);
-            }
-            Log.i(TAG, "Starting sticky notification service");
-        } else {
-            Log.i(TAG, "Sticky notification disabled by user, not starting service");
+    }
+
+    /**
+     * Starts the gateway foreground service when the gateway is enabled.
+     * Polls the server for pending outbound SMS/RCS even when the sticky notification UI is off.
+     */
+    public static void startGatewayService(Context context) {
+        if (!isPermissionGranted(context, Manifest.permission.RECEIVE_SMS)) {
+            return;
         }
+        if (!isGatewayEnabled(context)) {
+            Log.i(TAG, "Gateway disabled, not starting gateway service");
+            return;
+        }
+
+        Intent notificationIntent = new Intent(context, StickyNotificationService.class);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            context.startForegroundService(notificationIntent);
+        } else {
+            context.startService(notificationIntent);
+        }
+        Log.i(TAG, "Starting gateway background service");
+    }
+
+    public static void startStickyNotificationService(Context context) {
+        startGatewayService(context);
+    }
+
+    public static void stopGatewayService(Context context) {
+        Intent notificationIntent = new Intent(context, StickyNotificationService.class);
+        context.stopService(notificationIntent);
+        Log.i(TAG, "Stopping gateway background service");
     }
 
     public static void stopStickyNotificationService(Context context) {
-        Intent notificationIntent = new Intent(context, StickyNotificationService.class);
-        context.stopService(notificationIntent);
-        Log.i(TAG, "Stopping sticky notification service");
+        stopGatewayService(context);
     }
     
     /**

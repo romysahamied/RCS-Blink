@@ -29,15 +29,15 @@ public class BootCompletedReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
         if (Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) {
-            boolean stickyNotificationEnabled = SharedPreferenceHelper.getSharedPreferenceBoolean(
+            boolean gatewayEnabled = SharedPreferenceHelper.getSharedPreferenceBoolean(
                 context,
-                AppConstants.SHARED_PREFS_STICKY_NOTIFICATION_ENABLED_KEY,
+                AppConstants.SHARED_PREFS_GATEWAY_ENABLED_KEY,
                 false
             );
-            
-            if(stickyNotificationEnabled && TextBeeUtils.isPermissionGranted(context, Manifest.permission.RECEIVE_SMS)){
-                Log.i(TAG, "Device booted, starting sticky notification service");
-                TextBeeUtils.startStickyNotificationService(context);
+
+            if (gatewayEnabled && TextBeeUtils.isPermissionGranted(context, Manifest.permission.RECEIVE_SMS)) {
+                Log.i(TAG, "Device booted, starting gateway service");
+                TextBeeUtils.startGatewayService(context);
             }
             
             // Report device info to server if device is registered

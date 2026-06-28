@@ -147,12 +147,11 @@ public class MainActivity extends AppCompatActivity {
             Log.w(TAG, "Crashlytics unavailable; continuing without it", e);
         }
 
-        // Start sticky notification service if enabled
+        // Start gateway background polling when gateway is enabled
         boolean gatewayEnabled = SharedPreferenceHelper.getSharedPreferenceBoolean(mContext, AppConstants.SHARED_PREFS_GATEWAY_ENABLED_KEY, false);
-        boolean stickyNotificationEnabled = SharedPreferenceHelper.getSharedPreferenceBoolean(mContext, AppConstants.SHARED_PREFS_STICKY_NOTIFICATION_ENABLED_KEY, false);
-        if (gatewayEnabled && stickyNotificationEnabled) {
-            TextBeeUtils.startStickyNotificationService(mContext);
-            Log.d(TAG, "Starting sticky notification service on app start");
+        if (gatewayEnabled) {
+            TextBeeUtils.startGatewayService(mContext);
+            Log.d(TAG, "Starting gateway service on app start");
         }
 
         // Schedule heartbeat if device is enabled and registered
@@ -223,14 +222,11 @@ public class MainActivity extends AppCompatActivity {
                     boolean enabled = Boolean.TRUE.equals(Objects.requireNonNull(response.body()).data.get("enabled"));
                     compoundButton.setChecked(enabled);
                     if (enabled) {
-                        // Check if sticky notification is enabled
-                        if (SharedPreferenceHelper.getSharedPreferenceBoolean(mContext, AppConstants.SHARED_PREFS_STICKY_NOTIFICATION_ENABLED_KEY, false)) {
-                            TextBeeUtils.startStickyNotificationService(mContext);
-                        }
+                        TextBeeUtils.startGatewayService(mContext);
                         // Schedule heartbeat
                         HeartbeatManager.scheduleHeartbeat(mContext);
                     } else {
-                        TextBeeUtils.stopStickyNotificationService(mContext);
+                        TextBeeUtils.stopGatewayService(mContext);
                         // Cancel heartbeat
                         HeartbeatManager.cancelHeartbeat(mContext);
                     }
@@ -262,11 +258,21 @@ public class MainActivity extends AppCompatActivity {
             SharedPreferenceHelper.setSharedPreferenceBoolean(mContext, AppConstants.SHARED_PREFS_STICKY_NOTIFICATION_ENABLED_KEY, isChecked);
             
             if (isChecked) {
-                TextBeeUtils.startStickyNotificationService(mContext);
+                if (SharedPreferenceHelper.getSharedPreferenceBoolean(
+                        mContext, AppConstants.SHARED_PREFS_GATEWAY_ENABLED_KEY, false)) {
+                    TextBeeUtils.stopGatewayService(mContext);
+                    TextBeeUtils.startGatewayService(mContext);
+                }
                 Snackbar.make(view, "Background service enabled - app will be more reliable", Snackbar.LENGTH_LONG).show();
             } else {
-                TextBeeUtils.stopStickyNotificationService(mContext);
-                Snackbar.make(view, "Background service disabled - app may be killed when in background", Snackbar.LENGTH_LONG).show();
+                if (SharedPreferenceHelper.getSharedPreferenceBoolean(
+                        mContext, AppConstants.SHARED_PREFS_GATEWAY_ENABLED_KEY, false)) {
+                    TextBeeUtils.stopGatewayService(mContext);
+                    TextBeeUtils.startGatewayService(mContext);
+                } else {
+                    TextBeeUtils.stopGatewayService(mContext);
+                }
+                Snackbar.make(view, "Using silent gateway notification - outbound messages still poll automatically", Snackbar.LENGTH_LONG).show();
             }
         });
 

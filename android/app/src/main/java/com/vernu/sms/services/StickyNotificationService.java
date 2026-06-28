@@ -47,25 +47,32 @@ public class StickyNotificationService extends Service {
         super.onCreate();
         Log.i(TAG, "Service Started");
 
-        // Only show notification if enabled in preferences
+        boolean gatewayEnabled = SharedPreferenceHelper.getSharedPreferenceBoolean(
+                getApplicationContext(),
+                AppConstants.SHARED_PREFS_GATEWAY_ENABLED_KEY,
+                false
+        );
+        if (!gatewayEnabled) {
+            Log.i(TAG, "Gateway disabled, stopping service");
+            stopSelf();
+            return;
+        }
+
         boolean stickyNotificationEnabled = SharedPreferenceHelper.getSharedPreferenceBoolean(
                 getApplicationContext(),
                 AppConstants.SHARED_PREFS_STICKY_NOTIFICATION_ENABLED_KEY,
                 false
         );
 
-        if (stickyNotificationEnabled) {
-            Notification notification = createNotification();
-            try {
-                startForeground(1, notification);
-                Log.i(TAG, "Started foreground service with sticky notification");
-            } catch (ForegroundServiceStartNotAllowedException e) {
-                Log.w(TAG, "Cannot start foreground from background, stopping service: " + e.getMessage());
-                stopSelf();
-                return;
-            }
-        } else {
-            Log.i(TAG, "Sticky notification disabled by user preference");
+        Notification notification = createNotification(stickyNotificationEnabled);
+        try {
+            startForeground(1, notification);
+            Log.i(TAG, stickyNotificationEnabled
+                    ? "Started foreground service with sticky notification"
+                    : "Started foreground service with silent gateway notification");
+        } catch (ForegroundServiceStartNotAllowedException e) {
+            Log.w(TAG, "Cannot start foreground from background, stopping service: " + e.getMessage());
+            stopSelf();
         }
     }
 
@@ -108,35 +115,54 @@ public class StickyNotificationService extends Service {
         OutboundSmsPullHelper.pullAndEnqueue(getApplicationContext(), deviceId, apiKey);
     }
 
-    private Notification createNotification() {
-        String notificationChannelId = "stickyNotificationChannel";
+    private Notification createNotification(boolean stickyNotificationEnabled) {
+        String notificationChannelId = stickyNotificationEnabled
+                ? "stickyNotificationChannel"
+                : "gatewayServiceChannel";
 
         NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        NotificationChannel channel = null;
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            channel = new NotificationChannel(notificationChannelId, notificationChannelId, NotificationManager.IMPORTANCE_HIGH);
+            int importance = stickyNotificationEnabled
+                    ? NotificationManager.IMPORTANCE_HIGH
+                    : NotificationManager.IMPORTANCE_LOW;
+            NotificationChannel channel = new NotificationChannel(
+                    notificationChannelId,
+                    stickyNotificationEnabled ? "RCS Blink Active" : "RCS Blink Gateway",
+                    importance
+            );
             channel.enableVibration(false);
             channel.setShowBadge(false);
             notificationManager.createNotificationChannel(channel);
 
             Intent notificationIntent = new Intent(this, MainActivity.class);
-            PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+            PendingIntent pendingIntent = PendingIntent.getActivity(
+                    this, 0, notificationIntent, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
 
-            Notification.Builder builder = new Notification.Builder(this, notificationChannelId);
-            return builder.setContentTitle("RCS Blink Active")
-                    .setContentText("SMS gateway service is active")
+            String title = stickyNotificationEnabled ? "RCS Blink Active" : "RCS Blink Gateway";
+            String text = stickyNotificationEnabled
+                    ? "SMS gateway service is active"
+                    : "Listening for outbound messages";
+
+            return new Notification.Builder(this, notificationChannelId)
+                    .setContentTitle(title)
+                    .setContentText(text)
                     .setContentIntent(pendingIntent)
-                    .setOngoing(true)
-                    .setSmallIcon(R.drawable.ic_notification)
-                    .build();
-        } else {
-            NotificationCompat.Builder builder = new NotificationCompat.Builder(this, notificationChannelId);
-            return builder.setContentTitle("RCS Blink Active")
-                    .setContentText("SMS gateway service is active")
                     .setOngoing(true)
                     .setSmallIcon(R.drawable.ic_notification)
                     .build();
         }
 
+        int priority = stickyNotificationEnabled
+                ? NotificationCompat.PRIORITY_HIGH
+                : NotificationCompat.PRIORITY_LOW;
+        return new NotificationCompat.Builder(this, notificationChannelId)
+                .setContentTitle(stickyNotificationEnabled ? "RCS Blink Active" : "RCS Blink Gateway")
+                .setContentText(stickyNotificationEnabled
+                        ? "SMS gateway service is active"
+                        : "Listening for outbound messages")
+                .setOngoing(true)
+                .setPriority(priority)
+                .setSmallIcon(R.drawable.ic_notification)
+                .build();
     }
 }
