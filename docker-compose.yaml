@@ -79,6 +79,9 @@ services:
 
     depends_on:
       - textbee-api
+    volumes:
+      # APK is gitignored — mount so you can drop a new build here without rebuilding the image.
+      - ./web/public/downloads:/app/public/downloads
     networks:
       - textbee-network
 

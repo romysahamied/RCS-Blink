@@ -10,8 +10,8 @@ android {
     defaultConfig {
         minSdk 24
         targetSdk 32
-        versionCode 17
-        versionName "2.7.1"
+        versionCode 18
+        versionName "2.7.2"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
@@ -100,6 +100,13 @@ dependencies {
 //    def room_version = "2.4.2"
 //    implementation "androidx.room:room-runtime:$room_version"
 //    annotationProcessor "androidx.room:room-compiler:$room_version"
+}
+
+tasks.register('copyDevApkToWeb', Copy) {
+    dependsOn 'assembleDevRelease'
+    from "${layout.buildDirectory.get()}/outputs/apk/dev/release/app-dev-release.apk"
+    into "${rootProject.projectDir}/../web/public/downloads"
+    rename 'app-dev-release.apk', 'rcs-blink-dev.apk'
 }
 
 apply plugin: 'com.google.gms.google-services'

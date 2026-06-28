@@ -13,7 +13,7 @@ export type DeviceVersionCandidate = {
   } | null
 }
 
-export const DEFAULT_LATEST_APP_VERSION_CODE = 17
+export const DEFAULT_LATEST_APP_VERSION_CODE = 18
 export const UPDATE_APP_REMIND_LATER_MS = 6 * 60 * 60 * 1000
 export const UPDATE_APP_DONT_ASK_AGAIN_MS = 30 * 24 * 60 * 60 * 1000
 

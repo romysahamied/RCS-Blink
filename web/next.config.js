@@ -21,6 +21,20 @@ const nextConfig = {
       },
     ]
   },
+
+  async headers() {
+    return [
+      {
+        source: '/downloads/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-cache, no-store, must-revalidate',
+          },
+        ],
+      },
+    ]
+  },
 }
 
 

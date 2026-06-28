@@ -1,4 +1,4 @@
-import { getConfiguredApkDownloadUrl } from './android-download'
+import { getApkDownloadUrlWithCacheBust } from './android-download'
 
 export const Routes = {
   landingPage: 'https://textbee.dev',
@@ -14,7 +14,7 @@ export const Routes = {
 
   dashboard: '/dashboard',
 
-  downloadAndroidApp: getConfiguredApkDownloadUrl(),
+  downloadAndroidApp: getApkDownloadUrlWithCacheBust(),
   privacyPolicy: 'https://textbee.dev/privacy-policy',
   refundPolicy: 'https://textbee.dev/refund-policy',
   termsOfService: 'https://textbee.dev/terms-of-service',

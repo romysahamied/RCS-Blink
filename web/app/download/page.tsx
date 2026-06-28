@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/accordion'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
+  getApkDownloadUrlWithCacheBust,
   getConfiguredApkDownloadUrl,
   HOSTED_APK_FILENAME,
 } from '@/config/android-download'
@@ -58,7 +59,8 @@ export default function DownloadPage() {
   const [hostedApkSize, setHostedApkSize] = useState<number | null>(null)
   const [checkingHostedApk, setCheckingHostedApk] = useState(true)
 
-  const configuredApkUrl = getConfiguredApkDownloadUrl()
+  const configuredApkUrl = getApkDownloadUrlWithCacheBust()
+  const hostedApkCheckUrl = getConfiguredApkDownloadUrl()
 
   useEffect(() => {
     async function fetchReleases() {
@@ -81,7 +83,7 @@ export default function DownloadPage() {
 
     async function checkHostedApk() {
       try {
-        const response = await fetch(configuredApkUrl, { method: 'HEAD' })
+        const response = await fetch(hostedApkCheckUrl, { method: 'HEAD' })
         if (response.ok) {
           setHostedApkUrl(configuredApkUrl)
           const length = response.headers.get('content-length')
@@ -98,12 +100,13 @@ export default function DownloadPage() {
 
     fetchReleases()
     checkHostedApk()
-  }, [configuredApkUrl])
+  }, [configuredApkUrl, hostedApkCheckUrl])
 
   // Get the latest stable release (not prerelease)
   const latestRelease = releases.find((release) => !release.prerelease)
   const githubDownloadUrl = latestRelease?.assets?.[0]?.browser_download_url
-  const primaryDownloadUrl = githubDownloadUrl || hostedApkUrl
+  // Prefer the APK uploaded to this server over older GitHub release assets.
+  const primaryDownloadUrl = hostedApkUrl || githubDownloadUrl
   const primaryDownloadSize =
     latestRelease?.assets?.[0]?.size ?? hostedApkSize ?? null
   const pageLoading = loading || checkingHostedApk

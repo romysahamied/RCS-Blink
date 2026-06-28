@@ -1,0 +1,2 @@
+# APK files here are gitignored. After building:
+#   cd android && .\gradlew.bat copyDevApkToWeb -PAPI_BASE_URL_DEV=http://YOUR_IP:3001/api/v1/
