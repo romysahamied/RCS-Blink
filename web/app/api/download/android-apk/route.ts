@@ -4,6 +4,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { HOSTED_APK_FILENAME } from '@/config/android-download'
 
 export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 const GITHUB_REPO =
   process.env.NEXT_PUBLIC_ANDROID_GITHUB_REPO?.trim() || 'romysahamied/RCS-Blink'

@@ -57,6 +57,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+# Keep downloads dir writable for runtime APK uploads (volume mount target).
+RUN mkdir -p /app/public/downloads && chown -R nextjs:nodejs /app/public/downloads
+
 
 COPY --from=builder --chown=nextjs:nodejs /app/package.json ./
 COPY --from=builder --chown=nextjs:nodejs /app/pnpm-lock.yaml ./

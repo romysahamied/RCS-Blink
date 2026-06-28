@@ -76,6 +76,7 @@ services:
     environment:
       - PORT=${PORT:-3000}
       - NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL:-http://localhost:3001/api/v1}
+      - ANDROID_APK_PATH=/app/public/downloads/rcs-blink-dev.apk
 
     depends_on:
       - textbee-api
