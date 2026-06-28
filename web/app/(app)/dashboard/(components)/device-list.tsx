@@ -230,28 +230,14 @@ export default function DeviceList() {
                       </div>
                     </div>
                     {isDeviceOutdated(device as DeviceVersionCandidate) && (
-                      <div className='mt-3 flex items-center justify-between gap-2 rounded-lg border border-brand-100 bg-brand-50/60 px-3 py-2 dark:border-brand-900/50 dark:bg-brand-950/20'>
+                      <div className='mt-3 rounded-lg border border-brand-100 bg-brand-50/60 px-3 py-2 dark:border-brand-900/50 dark:bg-brand-950/20'>
                         <p className='text-xs text-muted-foreground'>
                           This device is behind the latest supported version{' '}
                           <span className='font-medium text-foreground'>
                             {latestAppVersionCode}
                           </span>
-                          .
+                          . Ask your administrator for an updated APK.
                         </p>
-                        <Button
-                          variant='outline'
-                          size='sm'
-                          asChild
-                          className='shrink-0'
-                        >
-                          <a
-                            href={Routes.downloadAndroidApp}
-                            target='_blank'
-                            rel='noreferrer'
-                          >
-                            Update app
-                          </a>
-                        </Button>
                       </div>
                     )}
                   </div>
@@ -310,16 +296,8 @@ export default function DeviceList() {
           </DialogHeader>
           <ol className='list-decimal space-y-3 pl-5 text-left text-sm text-muted-foreground'>
             <li>
-              Download RCS Blink app from{' '}
-              <a
-                href={Routes.downloadAndroidApp}
-                target='_blank'
-                rel='noreferrer'
-                className='font-medium text-primary underline-offset-4 hover:underline'
-              >
-                {Routes.downloadAndroidApp}
-              </a>
-              , install it, and grant SMS permissions.
+              Install the RCS Blink app from your administrator, then grant SMS
+              permissions.
             </li>
             <li>
               Tap Continue to create a new API key and get a QR

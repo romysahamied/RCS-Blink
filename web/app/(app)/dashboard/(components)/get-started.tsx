@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Check, Download, ExternalLink, Lightbulb } from 'lucide-react'
+import { Check, ExternalLink, Lightbulb } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -23,7 +23,6 @@ import {
 } from '@/components/ui/dialog'
 import { ApiEndpoints } from '@/config/api'
 import { Routes } from '@/config/routes'
-import { HOSTED_APK_FILENAME } from '@/config/android-download'
 import httpBrowserClient from '@/lib/httpBrowserClient'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { cn } from '@/lib/utils'
@@ -400,15 +399,9 @@ export default function GetStartedCard() {
                           )}
                           {step.id === 'download_app' && (
                             <>
-                              <Button variant='outline' size='sm' asChild>
-                                <a
-                                  href={Routes.downloadAndroidApp}
-                                  download={HOSTED_APK_FILENAME}
-                                >
-                                  <Download className='h-4 w-4' />
-                                  Download APK
-                                </a>
-                              </Button>
+                              <p className='text-sm text-muted-foreground'>
+                                Ask your administrator for the Android app APK.
+                              </p>
                               <Button
                                 variant='link'
                                 size='sm'
@@ -570,15 +563,7 @@ export default function GetStartedCard() {
               Generate an API key in the step above (if you have not already).
             </li>
             <li>
-              Download the RCS Blink Android app (
-              <a
-                href={Routes.downloadAndroidApp}
-                download={HOSTED_APK_FILENAME}
-                className='font-medium text-primary underline-offset-4 hover:underline'
-              >
-                direct APK download
-              </a>
-              ).
+              Install the RCS Blink Android app from your administrator.
             </li>
             <li>Open the app and grant SMS permissions when prompted.</li>
             <li>

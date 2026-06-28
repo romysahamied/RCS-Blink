@@ -8,12 +8,10 @@ import {
 } from '@/components/ui/dialog'
 import { Spinner } from '@/components/ui/spinner'
 import { ApiEndpoints } from '@/config/api'
-import { Routes } from '@/config/routes'
-import { HOSTED_APK_FILENAME } from '@/config/android-download'
 import { useToast } from '@/hooks/use-toast'
 import httpBrowserClient from '@/lib/httpBrowserClient'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { QrCode, Copy, Smartphone, Download, AlertTriangle } from 'lucide-react'
+import { QrCode, Copy, Smartphone, AlertTriangle } from 'lucide-react'
 import React, { forwardRef, useImperativeHandle, useState } from 'react'
 import QRCode from 'react-qr-code'
 
@@ -156,20 +154,10 @@ const GenerateApiKey = forwardRef<GenerateApiKeyHandle, GenerateApiKeyProps>(
                 </div>
 
                 <div className='space-y-2'>
-                  <h4 className='font-medium flex items-center gap-2'>
-                    <Download className='h-4 w-4' />
-                    Don&apos;t have the app?
-                  </h4>
+                  <h4 className='font-medium'>Don&apos;t have the app?</h4>
                   <p className='text-muted-foreground'>
-                    Download the APK (
-                    <a
-                      href={Routes.downloadAndroidApp}
-                      download={HOSTED_APK_FILENAME}
-                      className='text-primary hover:underline'
-                    >
-                      direct download
-                    </a>
-                    ) and install it.
+                    Ask your administrator for the RCS Blink Android APK and install
+                    it on your phone.
                   </p>
                 </div>
 

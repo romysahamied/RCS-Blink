@@ -135,6 +135,8 @@ export const authOptions = {
     signIn: Routes.login,
     error: Routes.authError,
   },
+  secret: process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET,
+  trustHost: true,
   session: {
     strategy: 'jwt',
   },

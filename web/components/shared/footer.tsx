@@ -29,12 +29,6 @@ export default function Footer() {
           </Link>
           <Link
             className='text-sm font-medium hover:text-brand-500'
-            href={Routes.downloadAndroidApp}
-          >
-            Download App
-          </Link>
-          <Link
-            className='text-sm font-medium hover:text-brand-500'
             href={Routes.contribute}
             target='_blank'
           >

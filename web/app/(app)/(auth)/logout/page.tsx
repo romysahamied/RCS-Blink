@@ -10,9 +10,9 @@ export default function Logout() {
   const router = useRouter()
   useEffect(() => {
     if (session.status === 'authenticated') {
-      signOut()
-    } else {
-      router.push(Routes.login)
+      signOut({ callbackUrl: Routes.login })
+    } else if (session.status === 'unauthenticated') {
+      router.replace(Routes.login)
     }
   }, [router, session.status])
 

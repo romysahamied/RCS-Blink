@@ -11,6 +11,11 @@ export async function middleware(request: NextRequest) {
   })
   const { pathname } = request.nextUrl
 
+  if (pathname === '/') {
+    const destination = token ? Routes.dashboard : Routes.login
+    return NextResponse.redirect(new URL(destination, request.url))
+  }
+
   // if path is /app redirect to login or dashboard based on auth status
   if (pathname === '/app') {
     if (!token) {
