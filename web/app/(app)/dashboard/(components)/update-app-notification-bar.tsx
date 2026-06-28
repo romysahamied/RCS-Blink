@@ -1,7 +1,6 @@
 'use client'
 
 import { useMemo } from 'react'
-import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import { ArrowUpRight, BellRing } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
