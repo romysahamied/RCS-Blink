@@ -141,6 +141,21 @@ export const authOptions = {
     strategy: 'jwt',
   },
   callbacks: {
+    async redirect({ url }) {
+      if (url.startsWith('/')) {
+        return url
+      }
+      try {
+        const { pathname, search, hash } = new URL(url)
+        const path = `${pathname}${search}${hash}`
+        if (path.startsWith('/')) {
+          return path
+        }
+      } catch {
+        // ignore malformed URLs
+      }
+      return Routes.dashboard
+    },
     async jwt({ token, user, trigger, session }) {
       if (trigger === 'update') {
         if (session.name !== token.name) {

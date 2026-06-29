@@ -9,11 +9,15 @@ export default function Logout() {
   const session = useSession()
   const router = useRouter()
   useEffect(() => {
-    if (session.status === 'authenticated') {
-      signOut({ callbackUrl: Routes.login })
-    } else if (session.status === 'unauthenticated') {
-      router.replace(Routes.login)
+    const logout = async () => {
+      if (session.status === 'authenticated') {
+        await signOut({ redirect: false })
+        router.replace(Routes.login)
+      } else if (session.status === 'unauthenticated') {
+        router.replace(Routes.login)
+      }
     }
+    logout()
   }, [router, session.status])
 
   return (

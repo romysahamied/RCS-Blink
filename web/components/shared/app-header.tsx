@@ -3,6 +3,7 @@
 import { useMemo } from 'react'
 import Link from 'next/link'
 import BrandLogo from './brand-logo'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
@@ -20,8 +21,11 @@ import ThemeToggle from './theme-toggle'
 import { Session } from 'next-auth'
 
 export default function AppHeader({ session }: { session: Session }) {
-  const handleLogout = () => {
-    signOut({ callbackUrl: Routes.login })
+  const router = useRouter()
+
+  const handleLogout = async () => {
+    await signOut({ redirect: false })
+    router.replace(Routes.login)
   }
 
   const isAuthenticated = useMemo(

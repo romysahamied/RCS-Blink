@@ -18,6 +18,7 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Routes } from '@/config/routes'
+import { toAppPath } from '@/lib/auth-navigation'
 import { useTurnstile } from '@/lib/turnstile'
 
 const loginSchema = z.object({
@@ -82,14 +83,13 @@ export default function LoginForm() {
     try {
       const result = await signIn('email-password-login', {
         redirect: false,
-        callbackUrl: Routes.dashboard,
         email: data.email,
         password: data.password,
         turnstileToken: data.turnstileToken,
       })
 
-      if (result?.ok && result.url) {
-        router.push(result.url)
+      if (result?.ok) {
+        router.push(toAppPath(result.url, Routes.dashboard))
         return
       }
 

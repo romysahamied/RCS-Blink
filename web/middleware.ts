@@ -7,7 +7,7 @@ export async function middleware(request: NextRequest) {
   // Extract token using the secret for session-based authentication
   const token = await getToken({
     req: request,
-    secret: process.env.NEXTAUTH_SECRET,
+    secret: process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET,
   })
   const { pathname } = request.nextUrl
 

@@ -1,6 +1,7 @@
 'use client'
 
 import { Routes } from '@/config/routes'
+import { safeRedirectParam } from '@/lib/auth-navigation'
 import { toast } from '@/hooks/use-toast'
 import { CredentialResponse, GoogleLogin } from '@react-oauth/google'
 import { signIn } from 'next-auth/react'
@@ -24,10 +25,18 @@ export default function LoginWithGoogle() {
       description: 'You are logged in with Google',
       variant: 'default',
     })
-    await signIn('google-id-token-login', {
-      redirect: true,
-      callbackUrl: redirect ? decodeURIComponent(redirect) : Routes.dashboard,
+    const result = await signIn('google-id-token-login', {
+      redirect: false,
       idToken: credentialResponse.credential,
+    })
+    if (result?.ok) {
+      router.push(safeRedirectParam(redirect, Routes.dashboard))
+      return
+    }
+    toast({
+      title: 'Error',
+      description: 'Google sign-in failed',
+      variant: 'destructive',
     })
   }
 
