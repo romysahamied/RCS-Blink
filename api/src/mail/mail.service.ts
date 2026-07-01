@@ -1,5 +1,6 @@
 import { ISendMailOptions, MailerService } from '@nest-modules/mailer'
 import { Injectable } from '@nestjs/common'
+import { getMailBranding, getMailFromAddress } from './mail-branding'
 
 @Injectable()
 export class MailService {
@@ -12,9 +13,7 @@ export class MailService {
       html,
     }
 
-    if (from) {
-      sendMailOptions['from'] = from
-    }
+    sendMailOptions['from'] = from || getMailFromAddress()
 
     if (process.env.MAIL_REPLY_TO) {
       sendMailOptions['replyTo'] = process.env.MAIL_REPLY_TO
@@ -32,12 +31,13 @@ export class MailService {
       cc,
       subject,
       template,
-      context,
+      context: {
+        ...getMailBranding(),
+        ...(context || {}),
+      },
     }
 
-    if (from) {
-      sendMailOptions['from'] = from
-    }
+    sendMailOptions['from'] = from || getMailFromAddress()
 
     if (process.env.MAIL_REPLY_TO) {
       sendMailOptions['replyTo'] = process.env.MAIL_REPLY_TO

@@ -18,6 +18,7 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import httpBrowserClient from '@/lib/httpBrowserClient'
 import { ApiEndpoints } from '@/config/api'
 import { Routes } from '@/config/routes'
+import { normalizeLocalDevLink } from '@/lib/local-dev-link'
 
 // Reusable components
 const ErrorAlert = ({ message }: { message: string }) => (
@@ -81,6 +82,7 @@ export default function VerifyEmailPage() {
   const [successMessage, setSuccessMessage] = useState<string>('')
   const [errorMessage, setErrorMessage] = useState<string>('')
   const [localVerificationLink, setLocalVerificationLink] = useState<string>('')
+  const verificationLinkForDev = normalizeLocalDevLink(localVerificationLink)
 
   // Check user authentication and email verification status
   const { 
@@ -212,18 +214,18 @@ export default function VerifyEmailPage() {
             {successMessage && (
               <InfoAlert title="Email Sent" message={successMessage} />
             )}
-            {localVerificationLink && (
+            {verificationLinkForDev && (
               <Alert className='bg-amber-50 text-amber-800 border-amber-200'>
                 <AlertTitle className='text-sm font-semibold'>Local Dev Link</AlertTitle>
                 <AlertDescription>
                   SMTP is not configured. Use this verification link:{' '}
                   <a
-                    href={localVerificationLink}
+                    href={verificationLinkForDev}
                     className='underline break-all'
                     target='_blank'
                     rel='noreferrer'
                   >
-                    {localVerificationLink}
+                    {verificationLinkForDev}
                   </a>
                 </AlertDescription>
               </Alert>
@@ -286,18 +288,18 @@ export default function VerifyEmailPage() {
           {successMessage && (
             <InfoAlert title="Email Sent" message={successMessage} />
           )}
-          {localVerificationLink && (
+          {verificationLinkForDev && (
             <Alert className='bg-amber-50 text-amber-800 border-amber-200'>
               <AlertTitle className='text-sm font-semibold'>Local Dev Link</AlertTitle>
               <AlertDescription>
                 SMTP is not configured. Use this verification link:{' '}
                 <a
-                  href={localVerificationLink}
+                  href={verificationLinkForDev}
                   className='underline break-all'
                   target='_blank'
                   rel='noreferrer'
                 >
-                  {localVerificationLink}
+                  {verificationLinkForDev}
                 </a>
               </AlertDescription>
             </Alert>

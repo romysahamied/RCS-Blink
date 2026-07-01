@@ -17,6 +17,7 @@ import {
   SupportCategory,
 } from './dto/create-support-message.dto'
 import { MailService } from '../mail/mail.service'
+import { getMailBranding, mailSubject } from '../mail/mail-branding'
 
 @Injectable()
 export class SupportService {
@@ -61,10 +62,9 @@ export class SupportService {
 
       // Send confirmation email to user
       await this.mailService.sendEmailFromTemplate({
-        from: 'support@textbee.dev',
         to: createSupportMessageDto.email,
         cc: process.env.ADMIN_EMAIL,
-        subject: `Support Request Submitted: ${createSupportMessageDto.category}-${savedMessage._id}`,
+        subject: `${getMailBranding().brandName} - Support Request: ${createSupportMessageDto.category}-${savedMessage._id}`,
         template: 'customer-support-confirmation',
         context: {
           name: createSupportMessageDto.name,
@@ -72,9 +72,6 @@ export class SupportService {
           phone: sanitizedDto.phone || 'Not provided',
           category: sanitizedDto.category,
           message: sanitizedDto.message,
-          appLogoUrl:
-            process.env.APP_LOGO_URL || 'https://textbee.dev/images/logo.png',
-          currentYear: new Date().getFullYear(),
         },
       })
 
@@ -135,18 +132,14 @@ export class SupportService {
 
       // Send confirmation email
       await this.mailService.sendEmailFromTemplate({
-        from: 'support@textbee.dev',
         to: user.email,
         cc: process.env.ADMIN_EMAIL,
-        subject: `Account Deletion Request: ${savedMessage._id}`,
+        subject: `${getMailBranding().brandName} - Account Deletion Request: ${savedMessage._id}`,
         template: 'account-deletion-request',
         context: {
           name: user.name,
           email: user.email,
           message: sanitizedDto.message || 'No reason provided',
-          appLogoUrl:
-            process.env.APP_LOGO_URL || 'https://textbee.dev/images/logo.png',
-          currentYear: new Date().getFullYear(),
         },
       })
 

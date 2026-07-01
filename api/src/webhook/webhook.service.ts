@@ -18,6 +18,7 @@ import mongoose from 'mongoose'
 import { SMS } from '../gateway/schemas/sms.schema'
 import { WebhookQueueService } from './queue/webhook-queue.service'
 import { MailService } from '../mail/mail.service'
+import { getMailBranding, mailSubject } from '../mail/mail-branding'
 import { UsersService } from '../users/users.service'
 
 @Injectable()
@@ -720,7 +721,7 @@ export class WebhookService {
       isActive: true,
     })
 
-    const ctaUrlBase = process.env.FRONTEND_URL || 'https://app.textbee.dev'
+    const ctaUrlBase = getMailBranding().frontendUrl as string
     const disabledInThisRun: {
       subscriptionId: string
       deliveryUrl: string
@@ -785,7 +786,7 @@ export class WebhookService {
       try {
         await this.mailService.sendEmailFromTemplate({
           to: user.email,
-          subject: 'Your webhook was paused – textbee',
+          subject: mailSubject('Your webhook was paused'),
           template: 'webhook-subscription-disabled',
           context: {
             name: user.name?.split(' ')?.[0] || 'there',
@@ -797,7 +798,7 @@ export class WebhookService {
             lookbackDays,
             ctaUrl: `${ctaUrlBase}/dashboard/account`,
             ctaLabel: 'Re-enable in dashboard',
-            brandName: 'textbee.dev',
+            brandName: getMailBranding().brandName,
           },
         })
       } catch (e) {
@@ -821,7 +822,7 @@ export class WebhookService {
             runAt,
             count: disabledInThisRun.length,
             disabledList: disabledInThisRun,
-            brandName: 'textbee.dev',
+            brandName: getMailBranding().brandName,
           },
         })
       } catch (e) {

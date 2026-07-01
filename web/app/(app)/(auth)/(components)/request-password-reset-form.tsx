@@ -29,6 +29,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import httpBrowserClient from '@/lib/httpBrowserClient'
 import { ApiEndpoints } from '@/config/api'
 import { Routes } from '@/config/routes'
+import { normalizeLocalDevLink } from '@/lib/local-dev-link'
 import { useTurnstile } from '@/lib/turnstile'
 
 const requestPasswordResetSchema = z.object({
@@ -42,6 +43,7 @@ type RequestPasswordResetFormValues = z.infer<typeof requestPasswordResetSchema>
 
 export default function RequestPasswordResetForm() {
   const [localResetLink, setLocalResetLink] = useState<string>('')
+  const resetLinkForDev = normalizeLocalDevLink(localResetLink)
 
   const form = useForm<RequestPasswordResetFormValues>({
     resolver: zodResolver(requestPasswordResetSchema),
@@ -177,16 +179,16 @@ export default function RequestPasswordResetForm() {
                 If you don&apos;t receive an email, please check your spam
                 folder or contact support.
               </AlertDescription>
-              {localResetLink && (
+              {resetLinkForDev && (
                 <AlertDescription className='mt-4 text-sm'>
                   Local dev reset link:{' '}
                   <a
-                    href={localResetLink}
+                    href={resetLinkForDev}
                     className='underline break-all'
                     target='_blank'
                     rel='noreferrer'
                   >
-                    {localResetLink}
+                    {resetLinkForDev}
                   </a>
                 </AlertDescription>
               )}

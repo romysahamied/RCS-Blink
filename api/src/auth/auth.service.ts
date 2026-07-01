@@ -13,6 +13,7 @@ import {
   PasswordResetDocument,
 } from './schemas/password-reset.schema'
 import { MailService } from '../mail/mail.service'
+import { getMailBranding, mailSubject } from '../mail/mail-branding'
 import { TurnstileService } from '../common/turnstile.service'
 import { RequestResetPasswordInputDTO, ResetPasswordInputDTO } from './auth.dto'
 import { AccessLog } from './schemas/access-log.schema'
@@ -79,10 +80,9 @@ export class AuthService {
       })
       this.mailService.sendEmailFromTemplate({
         to: user.email,
-        subject: 'Welcome to TextBee - Lets get started!',
+        subject: mailSubject("Let's get started!"),
         template: 'welcome-1',
         context: { name: user.name },
-        from: 'vernu vernu@textbee.dev',
       })
     }
 
@@ -140,10 +140,9 @@ export class AuthService {
 
     this.mailService.sendEmailFromTemplate({
       to: user.email,
-      subject: 'Welcome to TextBee - Lets get started!',
+      subject: mailSubject("Let's get started!"),
       template: 'welcome-1',
       context: { name: user.name },
-      from: 'vernu vernu@textbee.dev',
     })
 
     this.sendEmailVerificationEmail(user).catch((e) => {
@@ -197,11 +196,11 @@ export class AuthService {
     })
     await passwordReset.save()
 
-    const resetLink = `${process.env.FRONTEND_URL || 'https://textbee.dev'}/reset-password?email=${encodeURIComponent(user.email)}&otp=${otp}`
+    const resetLink = `${getMailBranding().frontendUrl}/reset-password?email=${encodeURIComponent(user.email)}&otp=${otp}`
 
     await this.mailService.sendEmailFromTemplate({
       to: user.email,
-      subject: 'textbee.dev - Password Reset',
+      subject: mailSubject('Password Reset'),
       template: 'password-reset-request',
       context: { name: user.name, resetLink, otp },
     })
@@ -244,7 +243,7 @@ export class AuthService {
 
     this.mailService.sendEmailFromTemplate({
       to: user.email,
-      subject: 'textbee.dev - Password Reset',
+      subject: mailSubject('Password Reset'),
       template: 'password-reset-success',
       context: { name: user.name },
     })
@@ -308,11 +307,11 @@ export class AuthService {
     })
     await emailVerification.save()
 
-    const verificationLink = `${process.env.FRONTEND_URL || 'https://textbee.dev'}/verify-email?userId=${user._id}&verificationCode=${verificationCode}`
+    const verificationLink = `${getMailBranding().frontendUrl}/verify-email?userId=${user._id}&verificationCode=${verificationCode}`
 
     await this.mailService.sendEmailFromTemplate({
       to: user.email,
-      subject: 'textbee.dev - Verify Email',
+      subject: mailSubject('Verify Email'),
       template: 'verify-email',
       context: {
         name: user.name,

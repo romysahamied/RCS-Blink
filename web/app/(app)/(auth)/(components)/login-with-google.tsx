@@ -1,14 +1,15 @@
 'use client'
 
 import { Routes } from '@/config/routes'
-import { safeRedirectParam } from '@/lib/auth-navigation'
+import { safeRedirectParam, syncSessionAfterSignIn } from '@/lib/auth-navigation'
 import { toast } from '@/hooks/use-toast'
 import { CredentialResponse, GoogleLogin } from '@react-oauth/google'
-import { signIn } from 'next-auth/react'
+import { signIn, useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
 export default function LoginWithGoogle() {
   const router = useRouter()
+  const { update } = useSession()
   const searchParams = useSearchParams()
   const redirect = searchParams.get('redirect')
   const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID?.trim()
@@ -30,6 +31,8 @@ export default function LoginWithGoogle() {
       idToken: credentialResponse.credential,
     })
     if (result?.ok) {
+      await syncSessionAfterSignIn(update)
+      router.refresh()
       router.push(safeRedirectParam(redirect, Routes.dashboard))
       return
     }

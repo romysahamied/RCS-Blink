@@ -14,24 +14,34 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
-import { Menu, LogOut, LayoutDashboard, MessageSquarePlus } from 'lucide-react'
-import { signOut } from 'next-auth/react'
+import { Menu, LogOut, LayoutDashboard } from 'lucide-react'
+import { signOut, useSession } from 'next-auth/react'
 import { Routes } from '@/config/routes'
 import ThemeToggle from './theme-toggle'
 import { Session } from 'next-auth'
 
-export default function AppHeader({ session }: { session: Session }) {
+export default function AppHeader({
+  session: serverSession,
+}: {
+  session: Session | null
+}) {
   const router = useRouter()
+  const { data: clientSession } = useSession()
+
+  const session = useMemo(() => {
+    if (clientSession?.user) {
+      return clientSession
+    }
+    return serverSession
+  }, [clientSession, serverSession])
 
   const handleLogout = async () => {
     await signOut({ redirect: false })
+    router.refresh()
     router.replace(Routes.login)
   }
 
-  const isAuthenticated = useMemo(
-    () => session?.user,
-    [session?.user]
-  )
+  const isAuthenticated = !!session?.user
 
   const AuthenticatedMenu = () => (
     <DropdownMenu>
@@ -109,13 +119,6 @@ export default function AppHeader({ session }: { session: Session }) {
                 <LayoutDashboard className='h-4 w-4' />
                 Dashboard
               </Link>
-              <Link
-                href={Routes.contribute}
-                className='flex items-center gap-2 py-2'
-              >
-                <MessageSquarePlus className='h-4 w-4' />
-                Contribute
-              </Link>
               <Button
                 onClick={handleLogout}
                 variant='ghost'
@@ -156,14 +159,6 @@ export default function AppHeader({ session }: { session: Session }) {
         <div className='flex flex-1 items-center justify-end space-x-2'>
           <nav className='flex items-center space-x-6'>
             <ThemeToggle />
-            <Link
-              href={Routes.contribute}
-              className='items-center gap-2 pr-8 hidden md:block'
-            >
-              <Button variant='outline' className='px-4 py-2 text-sm'>
-                Contribute
-              </Button>
-            </Link>
 
             {isAuthenticated ? (
               <AuthenticatedMenu />

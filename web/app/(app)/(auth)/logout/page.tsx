@@ -12,6 +12,7 @@ export default function Logout() {
     const logout = async () => {
       if (session.status === 'authenticated') {
         await signOut({ redirect: false })
+        router.refresh()
         router.replace(Routes.login)
       } else if (session.status === 'unauthenticated') {
         router.replace(Routes.login)

@@ -28,6 +28,11 @@ const getCachedSession = async () => {
   return session
 }
 
+export function clearSessionCache(): void {
+  sessionCache = null
+  cacheTimestamp = 0
+}
+
 httpBrowserClient.interceptors.request.use(async (config) => {
   const session = await getCachedSession()
 

@@ -3,6 +3,7 @@ import { OnEvent } from '@nestjs/event-emitter'
 import { InjectModel } from '@nestjs/mongoose'
 import { Model, Types } from 'mongoose'
 import { MailService } from '../mail/mail.service'
+import { getMailBranding } from '../mail/mail-branding'
 import {
   BillingNotification,
   BillingNotificationDocument,
@@ -39,12 +40,13 @@ export class BillingNotificationsListener {
       return
     }
 
-    const subject = this.subjectForType(payload.type, payload.title)
-    const ctaUrlBase = process.env.FRONTEND_URL || 'https://app.textbee.dev'
+    const branding = getMailBranding()
+    const subject = this.subjectForType(payload.type, payload.title, branding.brandName as string)
+    const ctaUrlBase = branding.frontendUrl as string
     const isEmailVerification = payload.type === 'email_verification_required'
     const ctaUrl = isEmailVerification
       ? `${ctaUrlBase}/dashboard/account`
-      : 'https://textbee.dev/#pricing'
+      : `${ctaUrlBase}/#pricing`
     const ctaLabel = isEmailVerification ? 'Verify your email' : 'View plans & pricing'
 
     await this.mailService.sendEmailFromTemplate({
@@ -57,7 +59,6 @@ export class BillingNotificationsListener {
         message: payload.message,
         ctaLabel,
         ctaUrl,
-        brandName: 'textbee.dev',
       },
       from: undefined,
     })
@@ -68,7 +69,7 @@ export class BillingNotificationsListener {
     )
   }
 
-  private subjectForType(type: string, fallback: string) {
+  private subjectForType(type: string, fallback: string, brandName: string) {
     switch (type) {
       case 'daily_limit_reached':
         return 'Daily SMS limit reached — action required'
@@ -81,7 +82,7 @@ export class BillingNotificationsListener {
       case 'monthly_limit_approaching':
         return 'Heads up: monthly usage nearing your limit'
       case 'email_verification_required':
-        return 'Verify your email to keep using textbee'
+        return `Verify your email to keep using ${brandName}`
       default:
         return fallback || 'Account notification'
     }

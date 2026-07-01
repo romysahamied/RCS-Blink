@@ -8,6 +8,7 @@ import {
 } from './schemas/checkout-session.schema'
 import { User, UserDocument } from '../users/schemas/user.schema'
 import { MailService } from '../mail/mail.service'
+import { getMailBranding, mailSubject } from '../mail/mail-branding'
 import { BillingService } from './billing.service'
 import { Plan } from './schemas/plan.schema'
 
@@ -31,7 +32,7 @@ export class AbandonedCheckoutService {
   private readonly emailSchedule: EmailConfig[] = [
     {
       template: 'abandoned-checkout-10-minutes',
-      subject: '⏰ Your textbee pro upgrade is waiting!',
+      subject: '⏰ Your Pro upgrade is waiting!',
       minutesBeforeExpiry: 15,
       emailType: 'first_reminder',
     },
@@ -159,19 +160,18 @@ export class AbandonedCheckoutService {
     // }
 
     try {
+      const branding = getMailBranding()
       const emailContext = {
         name: user.name?.split(' ')?.[0] || 'there',
         email: user.email,
-        checkoutUrl:
-          'https://app.textbee.dev/checkout/pro' /*session.checkoutUrl*/,
+        checkoutUrl: `${branding.frontendUrl}/checkout/pro`,
         planName: this.extractPlanNameFromPayload(session.payload),
         expiresAt: session.expiresAt,
       }
 
       await this.mailService.sendEmailFromTemplate({
         to: user.email,
-        from: 'support@textbee.dev',
-        subject: emailConfig.subject,
+        subject: mailSubject('Your Pro upgrade is waiting'),
         template: emailConfig.template,
         context: emailContext,
       })

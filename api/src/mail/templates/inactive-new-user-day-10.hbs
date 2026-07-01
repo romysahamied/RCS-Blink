@@ -2,7 +2,7 @@
   <head>
     <meta charset='utf-8' />
     <meta name='viewport' content='width=device-width, initial-scale=1.0' />
-    <title>How to Get the Most from textbee.dev</title>
+    <title>How to Get the Most from {{brandName}}</title>
     <style>
       body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       line-height: 1.6; color: #333; margin: 0; padding: 0; background-color:
@@ -36,7 +36,7 @@
       <div class='content'>
         <h2>Hello {{name}},</h2>
 
-        <p>We noticed you haven't started using textbee.dev yet. We'd love to
+        <p>We noticed you haven't started using {{brandName}} yet. We'd love to
           help you get started!</p>
 
         <p>Many of our users find these specific use cases particularly
@@ -53,7 +53,7 @@
             <div class='code-block'>
               // Send notification when order status changes<br />
               const response = await
-              axios.post('https://api.textbee.dev/api/v1/gateway/{DEVICE_ID}/send-sms',
+              axios.post('{{apiDocsUrl}}/api/v1/gateway/{DEVICE_ID}/send-sms',
               {<br />
               &nbsp;&nbsp;recipients: ['+1234567890'],<br />
               &nbsp;&nbsp;message: 'Your order #12345 has been shipped! Track at
@@ -79,7 +79,7 @@
               900000);<br /><br />
               // Send it via SMS<br />
               await
-              axios.post('https://api.textbee.dev/api/v1/gateway/{DEVICE_ID}/send-sms',
+              axios.post('{{apiDocsUrl}}/api/v1/gateway/{DEVICE_ID}/send-sms',
               {<br />
               &nbsp;&nbsp;recipients: ['+1234567890'],<br />
               &nbsp;&nbsp;message: `Your verification code is:
@@ -90,7 +90,7 @@
         </div>
 
         <p style="text-align: center; margin-top: 20px;">
-          <a href="https://textbee.dev/use-cases" style="color: #4A90E2; text-decoration: underline;">
+          <a href="{{frontendUrl}}/use-cases" style="color: #4A90E2; text-decoration: underline;">
             Explore more use cases →
           </a>
         </p>
@@ -106,41 +106,41 @@
         <ol>
           <li><strong>Download our Android app</strong>
             from
-            <a href='https://dl.textbee.dev'>dl.textbee.dev</a></li>
+            <a href='{{downloadUrl}}'>dl.{{brandName}}</a></li>
           <li><strong>Log in to your dashboard</strong>
             at
-            <a href='https://textbee.dev/dashboard'>textbee.dev/dashboard</a>
+            <a href='{{frontendUrl}}/dashboard'>{{brandName}}/dashboard</a>
             and generate a QR code</li>
           <li><strong>Scan the QR code</strong>
             with the app to connect your device</li>
         </ol>
 
         <p style="text-align: center; margin: 20px 0;">
-          <a href="https://textbee.dev/docs/quick-start" style="color: #4A90E2; text-decoration: underline;">
+          <a href="{{frontendUrl}}/docs/quick-start" style="color: #4A90E2; text-decoration: underline;">
             View our Quick Start Guide →
           </a>
         </p>
 
         <div style='text-align: center;'>
-          <a href='https://textbee.dev/dashboard' class='button'>Access Your
+          <a href='{{frontendUrl}}/dashboard' class='button'>Access Your
             Dashboard</a>
         </div>
 
         <p>If you have any questions or need help with setup, please don't
           hesitate to reach out. We're here to ensure you get the most out of
-          textbee.dev.</p>
+          {{brandName}}.</p>
 
-        <p>Best regards,<br />The textbee.dev Team</p>
+        <p>Best regards,<br />The {{brandName}} Team</p>
 
         <div class='social-links'>
           <a href='https://discord.gg/d7vyfBpWbQ'>Join our Discord Community</a>
           |
-          <a href='https://github.com/vernu/textbee'>Star us on GitHub</a>
+          <a href='{{frontendUrl}}'>Visit {{brandName}}</a>
         </div>
       </div>
 
       <div class='footer'>
-        <p>© 2025 textbee.dev. All rights reserved.</p>
+        <p>© 2025 {{brandName}}. All rights reserved.</p>
       </div>
     </div>
   </body>

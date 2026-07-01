@@ -4,6 +4,7 @@ import { User, UserDocument } from './schemas/user.schema'
 import { Model } from 'mongoose'
 import { Cron, CronExpression } from '@nestjs/schedule'
 import { MailService } from '../mail/mail.service'
+import { getMailBranding, mailSubject } from '../mail/mail-branding'
 import { BillingService } from '../billing/billing.service'
 import { Device, DeviceDocument } from '../gateway/schemas/device.schema'
 import { Plan } from 'src/billing/schemas/plan.schema'
@@ -151,12 +152,11 @@ export class UsersService {
             // User hasn't registered any device, send email
             await this.mailService.sendEmailFromTemplate({
               to: user.email,
-              subject:
-                'Getting Started with textbee.dev - How Can We Help?',
+              subject: mailSubject('How can we help you get started?'),
               template: 'inactive-new-user',
               context: {
                 name: user.name,
-                registerDeviceUrl: `${process.env.FRONTEND_URL}/dashboard`,
+                registerDeviceUrl: `${getMailBranding().dashboardUrl}`,
               },
             })
             console.log(`Sent inactive new user email to ${user.email}`)
@@ -199,11 +199,11 @@ export class UsersService {
               // Only send this if they haven't set up any devices after 10-14 days
               await this.mailService.sendEmailFromTemplate({
                 to: user.email,
-                subject: `${user.name?.split(' ')[0]}, we'd love to help you get started with textbee.dev`,
+                subject: `${user.name?.split(' ')[0]}, we'd love to help you get started with ${getMailBranding().brandName}`,
                 template: 'inactive-new-user-day-10',
                 context: {
                   name: user.name,
-                  registerDeviceUrl: `${process.env.FRONTEND_URL}/dashboard`,
+                  registerDeviceUrl: `${getMailBranding().dashboardUrl}`,
                 },
               })
 
@@ -212,11 +212,11 @@ export class UsersService {
               // Only send upgrade email to active users who have at least one device
               await this.mailService.sendEmailFromTemplate({
                 to: user.email,
-                subject: `${user.name?.split(' ')[0]}, unlock more capabilities with textbee.dev Pro`,
+                subject: `${user.name?.split(' ')[0]}, unlock more with ${getMailBranding().brandName} Pro`,
                 template: 'upgrade-to-pro',
                 context: {
                   name: user.name,
-                  upgradeUrl: `${process.env.FRONTEND_URL}/checkout/pro`,
+                  upgradeUrl: `${getMailBranding().frontendUrl}/checkout/pro`,
                   deviceCount: devices.length,
                 },
               })

@@ -1,8 +1,6 @@
 'use client'
 
 import { useEffect } from 'react'
-import { signIn } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
@@ -17,9 +15,10 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
-import { Routes } from '@/config/routes'
-import { toAppPath } from '@/lib/auth-navigation'
+import { isNextRedirect } from '@/lib/auth-navigation'
+import { encryptLoginSecret } from '@/lib/credential-crypto.client'
 import { useTurnstile } from '@/lib/turnstile'
+import { loginAction } from '@/app/(app)/(auth)/actions/login'
 
 const loginSchema = z.object({
   email: z.string().email({ message: 'Invalid email address' }),
@@ -32,8 +31,6 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>
 
 export default function LoginForm() {
-  const router = useRouter()
-
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -81,27 +78,28 @@ export default function LoginForm() {
     }
 
     try {
-      const result = await signIn('email-password-login', {
-        redirect: false,
-        email: data.email,
-        password: data.password,
-        turnstileToken: data.turnstileToken,
-      })
+      const passwordEnc = await encryptLoginSecret(data.password)
+      const formData = new FormData()
+      formData.set('email', data.email)
+      formData.set('passwordEnc', passwordEnc)
+      formData.set('turnstileToken', data.turnstileToken)
 
-      if (result?.ok) {
-        router.push(toAppPath(result.url, Routes.dashboard))
-        return
+      const result = await loginAction({}, formData)
+
+      if (result?.error) {
+        form.setError('root', {
+          type: 'manual',
+          message: result.error,
+        })
       }
-
-      form.setError('root', {
-        type: 'manual',
-        message: 'Invalid email or password',
-      })
     } catch (error) {
+      if (isNextRedirect(error)) {
+        throw error
+      }
       console.error('login error:', error)
       form.setError('root', {
         type: 'manual',
-        message: 'An unexpected error occurred. Please try again.',
+        message: 'Invalid email or password',
       })
     }
   }
@@ -135,6 +133,7 @@ export default function LoginForm() {
               <FormControl>
                 <Input
                   type='password'
+                  autoComplete='current-password'
                   {...field}
                   className='dark:text-white dark:bg-gray-800'
                 />

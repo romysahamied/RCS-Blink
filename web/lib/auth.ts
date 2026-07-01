@@ -1,9 +1,12 @@
 import CredentialsProvider from 'next-auth/providers/credentials'
-import axios from 'axios'
-import { getServerSideBaseUrl, httpServerClient } from './httpServerClient'
+import { httpServerClient } from './httpServerClient'
 import { DefaultSession } from 'next-auth'
 import { ApiEndpoints } from '@/config/api'
 import { Routes } from '@/config/routes'
+import {
+  loginWithEmailPassword,
+  registerWithEmailPassword,
+} from '@/lib/authenticate-user'
 
 // add custom fields to the session and user interfaces
 declare module 'next-auth' {
@@ -36,31 +39,10 @@ export const authOptions = {
       },
       async authorize(credentials) {
         const { email, password, turnstileToken } = credentials
-        try {
-          const res = await httpServerClient.post(ApiEndpoints.auth.login(), {
-            email,
-            password,
-            turnstileToken,
-          })
-
-          const user = res.data.data.user
-          const accessToken = res.data.data.accessToken
-
-          return {
-            ...user,
-            accessToken,
-          }
-        } catch (e) {
-          if (axios.isAxiosError(e)) {
-            const msg = e.code === 'ECONNREFUSED'
-              ? `[auth] Login: cannot reach API at ${getServerSideBaseUrl()}. Is the Nest server running on port 3001?`
-              : `[auth] Login failed: ${e.response?.status ?? e.code} ${e.response?.data ? JSON.stringify(e.response.data) : e.message}`
-            console.error(msg)
-          } else {
-            console.error(e)
-          }
+        if (!email || !password || !turnstileToken) {
           return null
         }
+        return loginWithEmailPassword(email, password, turnstileToken)
       },
     }),
     CredentialsProvider({
@@ -75,29 +57,16 @@ export const authOptions = {
       },
       async authorize(credentials) {
         const { email, password, name, phone, turnstileToken } = credentials
-        try {
-          const res = await httpServerClient.post(
-            ApiEndpoints.auth.register(),
-            {
-              email,
-              password,
-              name,
-              phone,
-              turnstileToken,
-            }
-          )
-
-          const user = res.data.data.user
-          const accessToken = res.data.data.accessToken
-
-          return {
-            ...user,
-            accessToken,
-          }
-        } catch (e) {
-          console.log(e)
+        if (!email || !password || !name || !turnstileToken) {
           return null
         }
+        return registerWithEmailPassword({
+          email,
+          password,
+          name,
+          phone: phone ?? undefined,
+          turnstileToken,
+        })
       },
     }),
     CredentialsProvider({

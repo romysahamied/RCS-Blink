@@ -2,7 +2,7 @@
   <head>
     <meta charset='utf-8' />
     <meta name='viewport' content='width=device-width, initial-scale=1.0' />
-    <title>Unlock More Capabilities with textbee.dev Pro</title>
+    <title>Unlock More Capabilities with {{brandName}} Pro</title>
     <style>
       body { 
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -143,7 +143,7 @@
       <div class='content'>
         <h2>Hello {{name}},</h2>
 
-        <p>Thank you for using textbee.dev! We're excited to see that you've been using our platform with {{deviceCount}} connected device{{#if deviceCount > 1}}s{{/if}}.</p>
+        <p>Thank you for using {{brandName}}! We're excited to see that you've been using our platform with {{deviceCount}} connected device{{#if deviceCount > 1}}s{{/if}}.</p>
 
         <p>Many of our users have found that upgrading to Pro helps them scale their SMS capabilities more effectively as they grow. Here's what you can unlock:</p>
 
@@ -174,7 +174,7 @@
         </div>
         
         <div class="testimonial">
-          "textbee.dev Pro has been game-changing for our delivery notifications. We've seen a 28% increase in customer satisfaction since implementing automated SMS updates."
+          "{{brandName}} Pro has been game-changing for our delivery notifications. We've seen a 28% increase in customer satisfaction since implementing automated SMS updates."
           <div class="testimonial-author">- Sarah K., E-commerce Business Owner</div>
         </div>
 
@@ -197,23 +197,23 @@
         </div>
 
         <div style='text-align: center;'>
-          <a href='https://textbee.dev/checkout/pro' class='button'>Upgrade to Pro</a>
-          <a href='https://textbee.dev/#pricing' class='secondary-button'>Learn More</a>
+          <a href='{{frontendUrl}}/checkout/pro' class='button'>Upgrade to Pro</a>
+          <a href='{{frontendUrl}}/#pricing' class='secondary-button'>Learn More</a>
         </div>
 
         <p>Not ready to upgrade? That's completely fine! Your free plan will continue to work as usual. If you have any questions about the Pro features or need help with your current setup, I'm happy to assist.</p>
 
-        <p>Best regards,<br />The textbee.dev Team</p>
+        <p>Best regards,<br />The {{brandName}} Team</p>
         
         <div class="social-links">
           <a href="https://discord.gg/d7vyfBpWbQ">Join our Discord Community</a> | 
-          <a href="https://github.com/vernu/textbee">Star us on GitHub</a>
+          <a href='{{frontendUrl}}'>Visit {{brandName}}</a>
         </div>
       </div>
 
       <div class='footer'>
-        <p>© 2025 textbee.dev. All rights reserved.</p>
-        <p style="font-size: 10px; color: #999;">You're receiving this email because you have an active textbee.dev account. To update your preferences, visit your <a href="https://textbee.dev/account/notifications">account settings</a>.</p>
+        <p>© 2025 {{brandName}}. All rights reserved.</p>
+        <p style="font-size: 10px; color: #999;">You're receiving this email because you have an active {{brandName}} account. To update your preferences, visit your <a href="{{frontendUrl}}/account/notifications">account settings</a>.</p>
       </div>
     </div>
   </body>
