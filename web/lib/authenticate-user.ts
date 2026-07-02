@@ -3,6 +3,7 @@ import { ApiEndpoints } from '@/config/api'
 import { getServerSideBaseUrl, httpServerClient } from '@/lib/httpServerClient'
 
 export type AuthenticatedUser = {
+  id: string
   _id: string
   name?: string | null
   email?: string | null
@@ -29,6 +30,7 @@ export async function loginWithEmailPassword(
 
     return {
       ...user,
+      id: user._id,
       accessToken,
     }
   } catch (e) {
@@ -60,6 +62,7 @@ export async function registerWithEmailPassword(input: {
 
     return {
       ...user,
+      id: user._id,
       accessToken,
     }
   } catch (e) {

@@ -90,6 +90,7 @@ export const authOptions = {
 
           return {
             ...user,
+            id: user._id,
             accessToken,
           }
         } catch (e) {
@@ -137,7 +138,7 @@ export const authOptions = {
       }
 
       if (user) {
-        token.id = user._id
+        token.id = user.id
         token.role = user.role
         token.accessToken = user.accessToken
         token.avatar = user.avatar
